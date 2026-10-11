@@ -46,7 +46,7 @@ const storage = getStorage(app);
 
 let currentUser = null;
 let confirmationResult = null;
-let activeServersMap = {}; // تخزين السيرفرات المتاحة مع العناوين الخاصة بها
+let activeServersMap = {};
 
 // 1. جلب السيرفرات النشطة من Realtime Database
 function loadActiveServers() {
@@ -88,7 +88,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// 3. النوافذ المنبثقة (Auth & Profile Modals)
+// 3. النوافذ المنبثقة
 document.getElementById('openAuthBtn').onclick = () => document.getElementById('authModal').classList.remove('hidden');
 document.getElementById('closeAuthModal').onclick = () => document.getElementById('authModal').classList.add('hidden');
 document.getElementById('openProfileBtn').onclick = () => {
@@ -173,21 +173,39 @@ document.getElementById('logoutBtn').onclick = () => {
     document.getElementById('profileModal').classList.add('hidden');
 };
 
-// 4. دالة الرفع لسيرفر PHP الخارجي (Custom API)
+// 4. دالة الرفع لسيرفر PHP الخارجي مع تجاوز حظر CORS و Mixed Content عبر البروكسي
 async function uploadToCustomApi(file, endpointUrl) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(endpointUrl, {
-        method: 'POST',
-        body: formData
-    });
+    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(endpointUrl);
 
-    const data = await response.json();
-    if (data.status === 'success' || data.url) {
-        return data.url;
-    } else {
-        throw new Error(data.message || 'فشل الرفع من سيرفر PHP');
+    try {
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success' || data.url) {
+            return data.url;
+        } else {
+            throw new Error(data.message || 'فشل الرفع من سيرفر PHP');
+        }
+    } catch (err) {
+        console.warn("جاري المحاولة المباشرة...", err);
+        const directResponse = await fetch(endpointUrl, {
+            method: 'POST',
+            body: formData
+        });
+        const directData = await directResponse.json();
+        
+        if (directData.status === 'success' || directData.url) {
+            return directData.url;
+        } else {
+            throw new Error(directData.message || 'فشل الرفع من سيرفر PHP');
+        }
     }
 }
 
@@ -234,7 +252,6 @@ document.getElementById('uploadBtn').onclick = async () => {
             document.getElementById('uploadStatus').textContent = `جاري رفع ${file.name}...`;
 
             if (selectedServerKey !== 'default' && activeServersMap[selectedServerKey]) {
-                // استخدام السيرفر الخارجي المختار (Custom PHP API)
                 const serverEndpoint = activeServersMap[selectedServerKey].endpoint || 'http://img-12.rf.gd/upload.php';
                 
                 progressBar.style.width = '50%';
@@ -245,14 +262,13 @@ document.getElementById('uploadBtn').onclick = async () => {
                 progressBar.style.width = '100%';
                 uploadPercent.textContent = '100%';
             } else {
-                // استخدام Firebase Storage الافتراضي
                 fileUrl = await uploadToFirebase(file, (percent) => {
                     progressBar.style.width = percent + '%';
                     uploadPercent.textContent = Math.round(percent) + '%';
                 });
             }
 
-            // حفظ بيانات الملف المرفوع في قاعدة بيانات Firebase Realtime Database
+            // حفظ بيانات الملف المرفوع في Firebase
             const uploadRecord = {
                 fileName: file.name,
                 fileSize: file.size,
@@ -262,7 +278,7 @@ document.getElementById('uploadBtn').onclick = async () => {
             };
             push(ref(db, 'uploads'), uploadRecord);
 
-            // عرض نتيجة الرفع بروابط المباشرة و QR
+            // عرض نتيجة الرفع
             renderFileResult(file.name, fileUrl);
             resultSection.classList.remove('hidden');
 
