@@ -1,196 +1,53 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
-    getAuth, 
-    GoogleAuthProvider, 
-    signInWithPopup, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged,
-    RecaptchaVerifier,
-    signInWithPhoneNumber
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { 
     getDatabase, 
     ref, 
     push, 
-    set, 
-    onValue, 
-    query, 
-    orderByChild, 
-    equalTo 
+    onValue 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { 
-    getStorage, 
-    ref as storageRef, 
-    uploadBytesResumable, 
-    getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-// Firebase Config (cn-img)
+// إعدادات Firebase Realtime Database المجانية فقط
 const firebaseConfig = {
-    apiKey: "AIzaSyCFlIDNppjhYjnYNdZf6tGG45N480GDX50",
-    authDomain: "cn-img.firebaseapp.com",
-    databaseURL: "https://cn-img-default-rtdb.firebaseio.com",
-    projectId: "cn-img",
-    storageBucket: "cn-img.firebasestorage.app",
-    messagingSenderId: "205454564363",
-    appId: "1:205454564363:web:941826fc55127a6c62bb0e"
+    databaseURL: "https://cn-img-default-rtdb.firebaseio.com"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getDatabase(app);
-const storage = getStorage(app);
 
-let currentUser = null;
-let confirmationResult = null;
-
-// 1. جلب السيرفرات النشطة من Realtime Database
-function loadActiveServers() {
-    const serversRef = ref(db, 'servers');
-    onValue(serversRef, (snapshot) => {
-        const select = document.getElementById('serverSelect');
-        select.innerHTML = '<option value="default">سيرفر التخزين السحابي السريع (Firebase Storage)</option>';
-
-        if (snapshot.exists()) {
-            snapshot.forEach((child) => {
-                const server = child.val();
-                if (server.active) {
-                    const opt = document.createElement('option');
-                    opt.value = child.key;
-                    opt.textContent = `${server.name} (${server.type || 'Storage'})`;
-                    select.appendChild(opt);
-                }
-            });
-        }
-    });
-}
-
-// 2. متابعة حالة تسجيل الدخول
-onAuthStateChanged(auth, (user) => {
-    currentUser = user;
-    const openAuthBtn = document.getElementById('openAuthBtn');
-    const userProfileMenu = document.getElementById('userProfileMenu');
-
-    if (user) {
-        openAuthBtn.classList.add('hidden');
-        userProfileMenu.classList.remove('hidden');
-        document.getElementById('userNameHeader').textContent = user.displayName || user.email || user.phoneNumber || 'مستخدم';
-        document.getElementById('userAvatarHeader').src = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email || 'User')}&background=0D8ABC&color=fff`;
-    } else {
-        openAuthBtn.classList.remove('hidden');
-        userProfileMenu.classList.add('hidden');
-    }
-});
-
-// 3. النوافذ المنبثقة
-document.getElementById('openAuthBtn').onclick = () => document.getElementById('authModal').classList.remove('hidden');
-document.getElementById('closeAuthModal').onclick = () => document.getElementById('authModal').classList.add('hidden');
-document.getElementById('openProfileBtn').onclick = () => {
-    document.getElementById('profileModal').classList.remove('hidden');
-    loadUserFiles();
-};
-document.getElementById('closeProfileModal').onclick = () => document.getElementById('profileModal').classList.add('hidden');
-
-// Google Auth
-document.getElementById('googleAuthBtn').onclick = async () => {
-    try {
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
-        document.getElementById('authModal').classList.add('hidden');
-    } catch (err) {
-        alert("خطأ في تسجيل الدخول بـ Google: " + err.message);
-    }
-};
-
-// Email / Phone Tabs
-document.getElementById('tabEmail').onclick = () => {
-    document.getElementById('emailAuthForm').classList.remove('hidden');
-    document.getElementById('phoneAuthForm').classList.add('hidden');
-    document.getElementById('tabEmail').className = "flex-1 py-2 text-center border-b-2 border-blue-500 font-semibold text-blue-400 text-sm";
-    document.getElementById('tabPhone').className = "flex-1 py-2 text-center border-b-2 border-transparent font-semibold text-gray-400 hover:text-white text-sm";
-};
-
-document.getElementById('tabPhone').onclick = () => {
-    document.getElementById('emailAuthForm').classList.add('hidden');
-    document.getElementById('phoneAuthForm').classList.remove('hidden');
-    document.getElementById('tabPhone').className = "flex-1 py-2 text-center border-b-2 border-blue-500 font-semibold text-blue-400 text-sm";
-    document.getElementById('tabEmail').className = "flex-1 py-2 text-center border-b-2 border-transparent font-semibold text-gray-400 hover:text-white text-sm";
-    initRecaptcha();
-};
-
-// Email Login / Register
-document.getElementById('emailLoginBtn').onclick = async () => {
-    const email = document.getElementById('authEmail').value;
-    const pass = document.getElementById('authPassword').value;
-    try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        document.getElementById('authModal').classList.add('hidden');
-    } catch (err) { alert("خطأ: " + err.message); }
-};
-
-document.getElementById('emailRegisterBtn').onclick = async () => {
-    const email = document.getElementById('authEmail').value;
-    const pass = document.getElementById('authPassword').value;
-    try {
-        await createUserWithEmailAndPassword(auth, email, pass);
-        document.getElementById('authModal').classList.add('hidden');
-    } catch (err) { alert("خطأ: " + err.message); }
-};
-
-// Phone Auth Setup
-function initRecaptcha() {
-    if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptchaContainer', { size: 'invisible' });
-    }
-}
-
-document.getElementById('sendSmsBtn').onclick = async () => {
-    const phone = document.getElementById('phoneNumber').value;
-    try {
-        confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
-        document.getElementById('otpBox').classList.remove('hidden');
-        alert("تم إرسال رمز التحقق إلى هاتفك");
-    } catch (err) { alert("خطأ الهاتف: " + err.message); }
-};
-
-document.getElementById('verifyOtpBtn').onclick = async () => {
-    const code = document.getElementById('otpCode').value;
-    try {
-        await confirmationResult.confirm(code);
-        document.getElementById('authModal').classList.add('hidden');
-    } catch (err) { alert("رمز التحقق غير صحيح: " + err.message); }
-};
-
-// Logout
-document.getElementById('logoutBtn').onclick = () => {
-    signOut(auth);
-    document.getElementById('profileModal').classList.add('hidden');
-};
-
-// 4. دالة الرفع المباشرة والسريعة على Firebase Storage
-function uploadToFirebase(file, onProgress) {
+// دالة تحويل الملف إلى Base64 للرفع المباشر
+function fileToBase64(file) {
     return new Promise((resolve, reject) => {
-        const fileRef = storageRef(storage, `uploads/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(fileRef, file);
-
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                onProgress(progress);
-            }, 
-            (error) => reject(error), 
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve(downloadURL);
-            }
-        );
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
     });
 }
 
-// 5. زر الرفع الرئيسي
+// دالة الرفع المباشرة لسيرفر PHP
+async function uploadFileDirectly(file, endpointUrl) {
+    const base64Data = await fileToBase64(file);
+
+    const response = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            file_name: file.name,
+            file_data: base64Data
+        })
+    });
+
+    const data = await response.json();
+    if (data.status === 'success' && data.url) {
+        return data.url;
+    } else {
+        throw new Error(data.message || 'فشل الرفع من السيرفر');
+    }
+}
+
+// زر الرفع الرئيسي
 document.getElementById('uploadBtn').onclick = async () => {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return alert("يرجى اختيار ملف أولاً");
@@ -204,28 +61,31 @@ document.getElementById('uploadBtn').onclick = async () => {
     progressContainer.classList.remove('hidden');
     linksList.innerHTML = '';
 
+    const serverEndpoint = 'http://img-12.rf.gd/upload.php'; // رابط سيرفرك المباشر
+
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
         try {
             document.getElementById('uploadStatus').textContent = `جاري رفع ${file.name}...`;
+            
+            progressBar.style.width = '40%';
+            uploadPercent.textContent = '40%';
 
-            const fileUrl = await uploadToFirebase(file, (percent) => {
-                progressBar.style.width = percent + '%';
-                uploadPercent.textContent = Math.round(percent) + '%';
-            });
+            const fileUrl = await uploadFileDirectly(file, serverEndpoint);
 
-            // حفظ بيانات الملف المرفوع في Realtime Database
-            const uploadRecord = {
+            progressBar.style.width = '100%';
+            uploadPercent.textContent = '100%';
+
+            // حفظ بيانات الرفع مجاناً في Realtime Database
+            push(ref(db, 'uploads'), {
                 fileName: file.name,
                 fileSize: file.size,
                 url: fileUrl,
-                userId: currentUser ? currentUser.uid : 'anonymous',
                 timestamp: Date.now()
-            };
-            push(ref(db, 'uploads'), uploadRecord);
+            });
 
-            // عرض نتيجة الرفع بروابط المباشرة و QR
+            // عرض النتائج والروابط المباشرة و QR
             renderFileResult(file.name, fileUrl);
             resultSection.classList.remove('hidden');
 
@@ -235,7 +95,7 @@ document.getElementById('uploadBtn').onclick = async () => {
     }
 };
 
-// 6. عرض الروابط ورموز QR للملفات المرفوعة
+// عرض النتائج
 function renderFileResult(fileName, url) {
     const linksList = document.getElementById('linksList');
     const qrId = 'qr_' + Math.random().toString(36).substr(2, 9);
@@ -248,9 +108,7 @@ function renderFileResult(fileName, url) {
             <p class="font-bold text-sm text-gray-200">${fileName}</p>
             <input type="text" readonly value="${url}" class="w-full bg-gray-800 border border-gray-700 text-xs text-blue-400 p-2 rounded-lg">
             <div class="flex flex-wrap gap-2">
-                <button onclick="navigator.clipboard.writeText('${url}')" class="bg-blue-600 hover:bg-blue-700 text-xs text-white px-3 py-1.5 rounded-lg transition">نسخ الرابط المباشر</button>
-                <button onclick="navigator.clipboard.writeText('[img]${url}[/img]')" class="bg-gray-700 hover:bg-gray-600 text-xs text-gray-200 px-3 py-1.5 rounded-lg transition">BBCode</button>
-                <button onclick="navigator.clipboard.writeText('<img src=\\'${url}\\' />')" class="bg-gray-700 hover:bg-gray-600 text-xs text-gray-200 px-3 py-1.5 rounded-lg transition">HTML</button>
+                <button onclick="navigator.clipboard.writeText('${url}')" class="bg-blue-600 hover:bg-blue-700 text-xs text-white px-3 py-1.5 rounded-lg transition">نسخ الرابط</button>
             </div>
         </div>
     `;
@@ -258,40 +116,7 @@ function renderFileResult(fileName, url) {
     setTimeout(() => new QRCode(document.getElementById(qrId), { text: url, width: 80, height: 80 }), 100);
 }
 
-// 7. جلب واستعراض ملفات المستخدم داخل البروفايل
-function loadUserFiles() {
-    if (!currentUser) return;
-    document.getElementById('profileName').textContent = currentUser.displayName || 'مستخدم';
-    document.getElementById('profileDetail').textContent = currentUser.email || currentUser.phoneNumber || currentUser.uid;
-    document.getElementById('profileAvatar').src = currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.email || 'User')}&background=0D8ABC&color=fff`;
-
-    const userFilesList = document.getElementById('userFilesList');
-    userFilesList.innerHTML = '';
-
-    const uploadsRef = query(ref(db, 'uploads'), orderByChild('userId'), equalTo(currentUser.uid));
-    onValue(uploadsRef, (snapshot) => {
-        if (!snapshot.exists()) {
-            userFilesList.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">لم تقم برفع أي ملفات بعد.</p>';
-            return;
-        }
-        userFilesList.innerHTML = '';
-        snapshot.forEach((child) => {
-            const item = child.val();
-            const itemEl = document.createElement('div');
-            itemEl.className = "bg-gray-900 p-3 rounded-xl border border-gray-700 flex justify-between items-center gap-2";
-            itemEl.innerHTML = `
-                <div class="truncate">
-                    <p class="text-xs font-bold text-gray-200 truncate">${item.fileName}</p>
-                    <a href="${item.url}" target="_blank" class="text-[10px] text-blue-400 underline truncate block">${item.url}</a>
-                </div>
-                <button onclick="navigator.clipboard.writeText('${item.url}')" class="bg-gray-700 hover:bg-gray-600 text-xs px-2.5 py-1.5 rounded-lg text-white">نسخ</button>
-            `;
-            userFilesList.appendChild(itemEl);
-        });
-    });
-}
-
-// 8. إعداد Drag & Drop
+// Drag & Drop
 const dropzone = document.getElementById('dropzone');
 dropzone.onclick = () => document.getElementById('fileInput').click();
 dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
@@ -301,6 +126,3 @@ dropzone.ondrop = (e) => {
     dropzone.classList.remove('dragover');
     document.getElementById('fileInput').files = e.dataTransfer.files;
 };
-
-// بدء التطبيق
-loadActiveServers();
