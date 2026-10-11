@@ -1,43 +1,193 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, onValue, push, set, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+// إعدادات Firebase الخاصة بك
 const firebaseConfig = {
-    databaseURL: "https://cn-img-default-rtdb.firebaseio.com"
+  apiKey: "AIzaSyCFlIDNppjhYjnYNdZf6tGG45N480GDX50",
+  authDomain: "cn-img.firebaseapp.com",
+  databaseURL: "https://cn-img-default-rtdb.firebaseio.com",
+  projectId: "cn-img",
+  storageBucket: "cn-img.firebasestorage.app",
+  messagingSenderId: "205454564363",
+  appId: "1:205454564363:web:941826fc55127a6c62bb0e"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 let activeServersMap = {};
 let currentUser = null;
 let selectedFilesArray = [];
 
-// 1. التنقل بين الصفحات في الواجهة الرئيسية
+// 1. مراقبة حالة تسجيل الدخول تلقائياً وحفظها في localStorage للسرعة
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // فحص بيانات المستخدم في Realtime Database
+        onValue(ref(db, `users/${user.uid}`), (snapshot) => {
+            if (snapshot.exists()) {
+                currentUser = snapshot.val();
+                currentUser.uid = user.uid;
+            } else {
+                currentUser = {
+                    uid: user.uid,
+                    name: user.displayName || user.email.split('@')[0],
+                    email: user.email,
+                    photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email)}&background=2563eb&color=fff`,
+                    plan: 'free'
+                };
+            }
+            localStorage.setItem('cn_user_session', JSON.stringify(currentUser));
+            updateUserUI();
+        });
+    } else {
+        // إذا كان يمتلك جلسة مسجلة سابقاً في LocalStorage نعتمدها لسرعة الاستجابة
+        const savedSession = localStorage.getItem('cn_user_session');
+        if (savedSession) {
+            currentUser = JSON.parse(savedSession);
+            updateUserUI();
+        } else {
+            currentUser = null;
+            updateUserUI();
+        }
+    }
+});
+
+// 2. تحديث الواجهة بناءً على حالة تسجيل الدخول (إخفاء/إظهار الرفع)
+function updateUserUI() {
+    const uploadBox = document.getElementById('uploadBoxSection');
+    const loginGate = document.getElementById('loginRequiredGate');
+    const authBtn = document.getElementById('openAuthBtn');
+    const profileMenu = document.getElementById('userProfileMenu');
+
+    if (currentUser) {
+        if (uploadBox) uploadBox.classList.remove('hidden');
+        if (loginGate) loginGate.classList.add('hidden');
+        if (authBtn) authBtn.classList.add('hidden');
+        if (profileMenu) profileMenu.classList.remove('hidden');
+
+        document.getElementById('userNameHeader').textContent = currentUser.name || 'المستخدم';
+        document.getElementById('planBadge').textContent = (currentUser.plan || 'FREE').toUpperCase();
+
+        if (currentUser.photoURL) {
+            document.getElementById('userAvatarHeader').src = currentUser.photoURL;
+        }
+
+        if (currentUser.plan === 'vip') {
+            document.getElementById('navSdkBtn').classList.remove('hidden');
+        }
+    } else {
+        if (uploadBox) uploadBox.classList.add('hidden');
+        if (loginGate) loginGate.classList.remove('hidden');
+        if (authBtn) authBtn.classList.remove('hidden');
+        if (profileMenu) profileMenu.classList.add('hidden');
+    }
+}
+
+// 3. تسجيل الدخول عبر Google
+document.getElementById('googleAuthBtn').onclick = async () => {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        
+        currentUser = {
+            uid: user.uid,
+            name: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            plan: 'free'
+        };
+
+        // الانتقال لاستكمال استبيان البيانات الأساسية
+        document.getElementById('authStep1').classList.add('hidden');
+        document.getElementById('authStep2').classList.remove('hidden');
+    } catch (err) {
+        alert("خطأ أثناء تسجيل الدخول عبر Google: " + err.message);
+    }
+};
+
+// 4. تسجيل الدخول/إنشاء حساب عبر البريد الإلكتروني
+window.handleUserAuth = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value;
+    const password = document.getElementById('authPassword').value;
+
+    try {
+        // محاولة تسجيل الدخول مباشرة
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        closeAuthModal();
+    } catch (err) {
+        // إذا لم يكن الحساب موجوداً يتم إنشاؤه
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+            try {
+                const newCredential = await createUserWithEmailAndPassword(auth, email, password);
+                currentUser = {
+                    uid: newCredential.user.uid,
+                    email: email,
+                    name: email.split('@')[0],
+                    plan: 'free'
+                };
+                document.getElementById('authStep1').classList.add('hidden');
+                document.getElementById('authStep2').classList.remove('hidden');
+            } catch (createErr) {
+                alert("خطأ في البريد أو كلمة المرور: " + createErr.message);
+            }
+        } else {
+            alert("خطأ أثناء الدخول: " + err.message);
+        }
+    }
+};
+
+// 5. استكمال بيانات الاستبيان
+window.submitProfileSurvey = (e) => {
+    e.preventDefault();
+    currentUser.name = document.getElementById('surveyName').value;
+    currentUser.gender = document.getElementById('surveyGender').value;
+    currentUser.country = document.getElementById('surveyCountry').value;
+    currentUser.phone = document.getElementById('surveyPhone').value || '';
+
+    document.getElementById('authStep2').classList.add('hidden');
+    document.getElementById('authStep3').classList.remove('hidden');
+};
+
+window.selectInitialPlan = (planType) => {
+    currentUser.plan = planType;
+    
+    // حفظ البيانات في Realtime Database و LocalStorage
+    set(ref(db, `users/${currentUser.uid}`), currentUser);
+    localStorage.setItem('cn_user_session', JSON.stringify(currentUser));
+
+    updateUserUI();
+    closeAuthModal();
+    alert("تم تفعيل حسابك واختيار الخطة بنجاح!");
+};
+
+window.logoutUser = () => {
+    signOut(auth);
+    localStorage.removeItem('cn_user_session');
+    currentUser = null;
+    updateUserUI();
+};
+
+// 6. التنقل بين الصفحات
 window.switchMainPage = (pageName) => {
     document.querySelectorAll('.main-page').forEach(el => el.classList.add('hidden'));
 
     if (pageName === 'home') document.getElementById('pageHome').classList.remove('hidden');
     if (pageName === 'my-files') {
-        if (!checkAuthRequired()) return;
+        if (!currentUser) return openAuthModal();
         document.getElementById('pageMyFiles').classList.remove('hidden');
         loadUserCloudFiles();
     }
     if (pageName === 'pricing') document.getElementById('pagePricing').classList.remove('hidden');
     if (pageName === 'sdk') {
-        if (!checkAuthRequired()) return;
+        if (!currentUser) return openAuthModal();
         document.getElementById('pageSdk').classList.remove('hidden');
         loadSdkStatus();
     }
 };
-
-// 2. التحقق من تسجيل الدخول الإجباري
-function checkAuthRequired() {
-    if (!currentUser) {
-        openAuthModal();
-        return false;
-    }
-    return true;
-}
 
 window.openAuthModal = () => {
     document.getElementById('authModal').classList.remove('hidden');
@@ -50,9 +200,8 @@ window.closeAuthModal = () => {
     document.getElementById('authModal').classList.add('hidden');
 };
 
-// 3. جلب بيانات السيرفرات والإحصائيات الحية
+// 7. جلب بيانات السيرفرات والإحصائيات الحية
 function initMainDashboard() {
-    // السيرفرات النشطة
     onValue(ref(db, 'servers'), (snapshot) => {
         const select = document.getElementById('serverSelect');
         if (!select) return;
@@ -75,7 +224,6 @@ function initMainDashboard() {
         }
     });
 
-    // الإحصائيات العامة
     onValue(ref(db, 'uploads'), (snapshot) => {
         document.getElementById('liveFilesCount').textContent = snapshot.exists() ? snapshot.size : 0;
     });
@@ -87,18 +235,9 @@ function initMainDashboard() {
             if (data.users) document.getElementById('liveUsersCount').textContent = data.users;
         }
     });
-
-    // استرجاع جلسة المستخدم المسجلة محلياً
-    const savedUser = localStorage.getItem('cn_user');
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUserUI();
-    } else {
-        document.getElementById('guestUploadBlocker').classList.remove('hidden');
-    }
 }
 
-// 4. معالجة الرفع المعاين التفاعلي
+// 8. معاينة الملفات والرفع السحابي
 const fileInput = document.getElementById('fileInput');
 const dropzone = document.getElementById('dropzone');
 
@@ -141,9 +280,8 @@ function handleFilesSelection(files) {
     });
 }
 
-// 5. زر الرفع الرئيسي
 document.getElementById('uploadBtn').onclick = async () => {
-    if (!checkAuthRequired()) return;
+    if (!currentUser) return openAuthModal();
 
     if (!selectedFilesArray.length) return alert("يرجى اختيار ملف واحد على الأقل للرفع");
 
@@ -188,7 +326,6 @@ document.getElementById('uploadBtn').onclick = async () => {
             progressBar.style.width = '100%';
             uploadPercent.textContent = '100%';
 
-            // تسجيل الملف في الداتابيز وترتيبه بحساب المستخدم
             push(ref(db, 'uploads'), {
                 fileName: file.name,
                 fileSize: file.size,
@@ -226,7 +363,7 @@ function renderResultCard(fileName, url) {
     setTimeout(() => new QRCode(document.getElementById(qrId), { text: url, width: 80, height: 80 }), 100);
 }
 
-// 6. استرجاع وعرض ملفات المستخدم المرفوعة
+// 9. ملفات المستخدم وطلب SDK
 function loadUserCloudFiles() {
     if (!currentUser) return;
 
@@ -268,70 +405,17 @@ window.deleteMyCloudFile = (fileId) => {
     }
 };
 
-// 7. الاستبيان وتمرير خطوات تسجيل الدخول
-window.handleUserAuth = (e) => {
-    e.preventDefault();
-    document.getElementById('authStep1').classList.add('hidden');
-    document.getElementById('authStep2').classList.remove('hidden');
-};
-
-window.submitProfileSurvey = (e) => {
-    e.preventDefault();
-    currentUser = {
-        uid: 'user_' + Date.now(),
-        name: document.getElementById('surveyName').value,
-        gender: document.getElementById('surveyGender').value,
-        country: document.getElementById('surveyCountry').value,
-        phone: document.getElementById('surveyPhone').value || '',
-        plan: 'free'
-    };
-
-    document.getElementById('authStep2').classList.add('hidden');
-    document.getElementById('authStep3').classList.remove('hidden');
-};
-
-window.selectInitialPlan = (planType) => {
-    currentUser.plan = planType;
-    set(ref(db, `users/${currentUser.uid}`), currentUser);
-    localStorage.setItem('cn_user', JSON.stringify(currentUser));
-
-    updateUserUI();
-    closeAuthModal();
-    alert("تم إنشاء حسابك وتحديد الخطة بنجاح!");
-};
-
-function updateUserUI() {
-    if (!currentUser) return;
-
-    document.getElementById('guestUploadBlocker').classList.add('hidden');
-    document.getElementById('openAuthBtn').classList.add('hidden');
-    document.getElementById('userProfileMenu').classList.remove('hidden');
-    document.getElementById('userNameHeader').textContent = currentUser.name;
-    document.getElementById('planBadge').textContent = currentUser.plan.toUpperCase();
-
-    if (currentUser.plan === 'vip') {
-        document.getElementById('navSdkBtn').classList.remove('hidden');
-    }
-}
-
-window.logoutUser = () => {
-    localStorage.removeItem('cn_user');
-    currentUser = null;
-    location.reload();
-};
-
-// 8. تقديم وتتبع طلب الـ SDK والخادم المدار
 window.submitSdkRequest = () => {
     if (!currentUser) return;
 
     set(ref(db, `sdk_requests/${currentUser.uid}`), {
         userName: currentUser.name,
-        userPhone: currentUser.phone,
+        userPhone: currentUser.phone || '',
         status: 'pending',
         requestedAt: Date.now()
     });
 
-    alert("تم تقديم طلب الحصول على السيرفر الخاص والـ SDK بنجاح! سيتم مراجعته وتفعيله من الإدارة.");
+    alert("تم تقديم طلب الحصول على السيرفر الخاص والـ SDK بنجاح!");
     loadSdkStatus();
 };
 
