@@ -26,13 +26,12 @@ function loadActiveServers() {
         if (snapshot.exists()) {
             snapshot.forEach((child) => {
                 const server = child.val();
-                // التأكد من أن السيرفر مفعل
                 if (server.active) {
                     activeServersMap[child.key] = server;
                     
                     const opt = document.createElement('option');
                     opt.value = child.key;
-                    opt.textContent = `${server.name} (${server.type || 'Cloud Storage'})`;
+                    opt.textContent = `${server.name} (${server.type || 'Cloud Worker'})`;
                     select.appendChild(opt);
                 }
             });
@@ -42,21 +41,23 @@ function loadActiveServers() {
     });
 }
 
-// 2. دالة الرفع الديناميكية الموحدة عبر رابط السيرفر/الووركر المسجل في الداتابيز
+// 2. دالة الرفع عبر الووركر مع ترميز أسماء الملفات العربية
 async function uploadToSelectedServer(file, serverConfig) {
-    // قراءة رابط السيرفر (Worker URL) المعرف في لوحة التحكم
     const targetEndpoint = serverConfig.endpoint || serverConfig.url;
 
     if (!targetEndpoint) {
         throw new Error("رابط السيرفر غير معرف في لوحة التحكم");
     }
 
+    // ترميز اسم الملف لتجنب أخطاء الحروف العربية في HTTP Headers
+    const safeFileName = encodeURIComponent(`${Date.now()}_${file.name}`);
+
     const response = await fetch(targetEndpoint, {
         method: 'POST',
         headers: {
-            'x-server-id': serverConfig.serverId || 'vercel_blob_1', // المعرف إن وجد
-            'x-file-name': `${Date.now()}_${file.name}`,
-            'content-type': file.type
+            'x-server-id': serverConfig.serverId || serverConfig.type || 'vercel_blob_1',
+            'x-file-name': safeFileName,
+            'content-type': file.type || 'image/jpeg'
         },
         body: file
     });
@@ -68,7 +69,7 @@ async function uploadToSelectedServer(file, serverConfig) {
     } else if (data.url) {
         return data.url;
     } else {
-        throw new Error(data.message || data.error || 'فشل الرفع من السيرفر المنسق');
+        throw new Error(data.message || data.error || 'فشل الرفع من سيرفر Cloudflare Worker');
     }
 }
 
@@ -102,13 +103,12 @@ document.getElementById('uploadBtn').onclick = async () => {
             progressBar.style.width = '40%';
             uploadPercent.textContent = '40%';
 
-            // رفع الملف بناءً على بيانات السيرفر المختار من الداتابيز
             const fileUrl = await uploadToSelectedServer(file, selectedServerConfig);
 
             progressBar.style.width = '100%';
             uploadPercent.textContent = '100%';
 
-            // تسجيل عملية الرفع في Firebase Realtime Database
+            // تسجيل العملية في Firebase Realtime Database
             push(ref(db, 'uploads'), {
                 fileName: file.name,
                 fileSize: file.size,
@@ -118,7 +118,7 @@ document.getElementById('uploadBtn').onclick = async () => {
                 timestamp: Date.now()
             });
 
-            // عرض النتيجة برابط مباشر ورامز QR
+            // عرض النتيجة
             renderFileResult(file.name, fileUrl);
             resultSection.classList.remove('hidden');
 
@@ -128,7 +128,7 @@ document.getElementById('uploadBtn').onclick = async () => {
     }
 };
 
-// 4. عرض النتيجة ورمز QR
+// 4. عرض النتائج ورمز QR
 function renderFileResult(fileName, url) {
     const linksList = document.getElementById('linksList');
     const qrId = 'qr_' + Math.random().toString(36).substr(2, 9);
@@ -162,5 +162,4 @@ if (dropzone) {
     };
 }
 
-// تشغيل جلب السيرفرات فور فتح الصفحة
 loadActiveServers();
