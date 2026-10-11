@@ -46,20 +46,24 @@ const storage = getStorage(app);
 
 let currentUser = null;
 let confirmationResult = null;
+let activeServersMap = {}; // تخزين السيرفرات المتاحة مع العناوين الخاصة بها
 
-// Load Active Servers from RTDB
+// 1. جلب السيرفرات النشطة من Realtime Database
 function loadActiveServers() {
     const serversRef = ref(db, 'servers');
     onValue(serversRef, (snapshot) => {
         const select = document.getElementById('serverSelect');
         select.innerHTML = '<option value="default">سيرفر التخزين الافتراضي (Firebase Storage)</option>';
+        activeServersMap = {};
+
         if (snapshot.exists()) {
             snapshot.forEach((child) => {
                 const server = child.val();
                 if (server.active) {
+                    activeServersMap[child.key] = server;
                     const opt = document.createElement('option');
                     opt.value = child.key;
-                    opt.textContent = `${server.name} (${server.type || 'Custom'})`;
+                    opt.textContent = `${server.name} (${server.type === 'custom_api' ? 'PHP/Custom' : 'Firebase'})`;
                     select.appendChild(opt);
                 }
             });
@@ -67,7 +71,7 @@ function loadActiveServers() {
     });
 }
 
-// Authentication Listeners
+// 2. متابعة حالة تسجيل الدخول
 onAuthStateChanged(auth, (user) => {
     currentUser = user;
     const openAuthBtn = document.getElementById('openAuthBtn');
@@ -84,7 +88,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Auth Modals Toggle
+// 3. النوافذ المنبثقة (Auth & Profile Modals)
 document.getElementById('openAuthBtn').onclick = () => document.getElementById('authModal').classList.remove('hidden');
 document.getElementById('closeAuthModal').onclick = () => document.getElementById('authModal').classList.add('hidden');
 document.getElementById('openProfileBtn').onclick = () => {
@@ -104,7 +108,7 @@ document.getElementById('googleAuthBtn').onclick = async () => {
     }
 };
 
-// Email Auth Tabs & Login/Register
+// Email / Phone Tabs
 document.getElementById('tabEmail').onclick = () => {
     document.getElementById('emailAuthForm').classList.remove('hidden');
     document.getElementById('phoneAuthForm').classList.add('hidden');
@@ -120,6 +124,7 @@ document.getElementById('tabPhone').onclick = () => {
     initRecaptcha();
 };
 
+// Email Login / Register
 document.getElementById('emailLoginBtn').onclick = async () => {
     const email = document.getElementById('authEmail').value;
     const pass = document.getElementById('authPassword').value;
@@ -138,7 +143,7 @@ document.getElementById('emailRegisterBtn').onclick = async () => {
     } catch (err) { alert("خطأ: " + err.message); }
 };
 
-// Phone Authentication
+// Phone Auth Setup
 function initRecaptcha() {
     if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptchaContainer', { size: 'invisible' });
@@ -168,11 +173,50 @@ document.getElementById('logoutBtn').onclick = () => {
     document.getElementById('profileModal').classList.add('hidden');
 };
 
-// File Upload Logic
-document.getElementById('uploadBtn').onclick = () => {
+// 4. دالة الرفع لسيرفر PHP الخارجي (Custom API)
+async function uploadToCustomApi(file, endpointUrl) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(endpointUrl, {
+        method: 'POST',
+        body: formData
+    });
+
+    const data = await response.json();
+    if (data.status === 'success' || data.url) {
+        return data.url;
+    } else {
+        throw new Error(data.message || 'فشل الرفع من سيرفر PHP');
+    }
+}
+
+// 5. دالة الرفع لسيرفر Firebase Storage الافتراضي
+function uploadToFirebase(file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const fileRef = storageRef(storage, `uploads/${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(fileRef, file);
+
+        uploadTask.on('state_changed', 
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                onProgress(progress);
+            }, 
+            (error) => reject(error), 
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+            }
+        );
+    });
+}
+
+// 6. زر الرفع الرئيسي
+document.getElementById('uploadBtn').onclick = async () => {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return alert("يرجى اختيار ملف أولاً");
 
+    const selectedServerKey = document.getElementById('serverSelect').value;
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const uploadPercent = document.getElementById('uploadPercent');
@@ -182,50 +226,65 @@ document.getElementById('uploadBtn').onclick = () => {
     progressContainer.classList.remove('hidden');
     linksList.innerHTML = '';
 
-    Array.from(files).forEach((file) => {
-        const fileRef = storageRef(storage, `uploads/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(fileRef, file);
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let fileUrl = '';
 
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                progressBar.style.width = progress + '%';
-                uploadPercent.textContent = Math.round(progress) + '%';
-            }, 
-            (error) => alert("خطأ في الرفع: " + error.message), 
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        try {
+            document.getElementById('uploadStatus').textContent = `جاري رفع ${file.name}...`;
+
+            if (selectedServerKey !== 'default' && activeServersMap[selectedServerKey]) {
+                // استخدام السيرفر الخارجي المختار (Custom PHP API)
+                const serverEndpoint = activeServersMap[selectedServerKey].endpoint || 'http://img-12.rf.gd/upload.php';
                 
-                // Save Record to Database
-                const uploadRecord = {
-                    fileName: file.name,
-                    fileSize: file.size,
-                    url: downloadURL,
-                    userId: currentUser ? currentUser.uid : 'anonymous',
-                    timestamp: Date.now()
-                };
-                push(ref(db, 'uploads'), uploadRecord);
+                progressBar.style.width = '50%';
+                uploadPercent.textContent = '50%';
+                
+                fileUrl = await uploadToCustomApi(file, serverEndpoint);
 
-                // Render Results
-                renderFileResult(file.name, downloadURL);
-                resultSection.classList.remove('hidden');
+                progressBar.style.width = '100%';
+                uploadPercent.textContent = '100%';
+            } else {
+                // استخدام Firebase Storage الافتراضي
+                fileUrl = await uploadToFirebase(file, (percent) => {
+                    progressBar.style.width = percent + '%';
+                    uploadPercent.textContent = Math.round(percent) + '%';
+                });
             }
-        );
-    });
+
+            // حفظ بيانات الملف المرفوع في قاعدة بيانات Firebase Realtime Database
+            const uploadRecord = {
+                fileName: file.name,
+                fileSize: file.size,
+                url: fileUrl,
+                userId: currentUser ? currentUser.uid : 'anonymous',
+                timestamp: Date.now()
+            };
+            push(ref(db, 'uploads'), uploadRecord);
+
+            // عرض نتيجة الرفع بروابط المباشرة و QR
+            renderFileResult(file.name, fileUrl);
+            resultSection.classList.remove('hidden');
+
+        } catch (err) {
+            alert(`خطأ أثناء رفع ${file.name}: ` + err.message);
+        }
+    }
 };
 
+// 7. عرض الروابط ورموز QR للملفات المرفوعة
 function renderFileResult(fileName, url) {
     const linksList = document.getElementById('linksList');
     const qrId = 'qr_' + Math.random().toString(36).substr(2, 9);
     
     const card = document.createElement('div');
-    card.className = "p-4 bg-gray-900 border border-gray-700 rounded-xl flex flex-col md:flex-row items-center gap-4";
+    card.className = "p-4 bg-gray-900 border border-gray-700 rounded-xl flex flex-col md:flex-row items-center gap-4 mb-3";
     card.innerHTML = `
         <div id="${qrId}" class="bg-white p-2 rounded-lg"></div>
         <div class="flex-grow w-full space-y-2">
             <p class="font-bold text-sm text-gray-200">${fileName}</p>
             <input type="text" readonly value="${url}" class="w-full bg-gray-800 border border-gray-700 text-xs text-blue-400 p-2 rounded-lg">
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
                 <button onclick="navigator.clipboard.writeText('${url}')" class="bg-blue-600 hover:bg-blue-700 text-xs text-white px-3 py-1.5 rounded-lg transition">نسخ الرابط المباشر</button>
                 <button onclick="navigator.clipboard.writeText('[img]${url}[/img]')" class="bg-gray-700 hover:bg-gray-600 text-xs text-gray-200 px-3 py-1.5 rounded-lg transition">BBCode</button>
                 <button onclick="navigator.clipboard.writeText('<img src=\\'${url}\\' />')" class="bg-gray-700 hover:bg-gray-600 text-xs text-gray-200 px-3 py-1.5 rounded-lg transition">HTML</button>
@@ -236,7 +295,7 @@ function renderFileResult(fileName, url) {
     setTimeout(() => new QRCode(document.getElementById(qrId), { text: url, width: 80, height: 80 }), 100);
 }
 
-// Load Files in Profile
+// 8. جلب واستعراض ملفات المستخدم داخل البروفايل
 function loadUserFiles() {
     if (!currentUser) return;
     document.getElementById('profileName').textContent = currentUser.displayName || 'مستخدم';
@@ -260,7 +319,7 @@ function loadUserFiles() {
             itemEl.innerHTML = `
                 <div class="truncate">
                     <p class="text-xs font-bold text-gray-200 truncate">${item.fileName}</p>
-                    <a href="${item.url}" target="_blank" class="text-[10px] text-blue-400 underline">${item.url}</a>
+                    <a href="${item.url}" target="_blank" class="text-[10px] text-blue-400 underline truncate block">${item.url}</a>
                 </div>
                 <button onclick="navigator.clipboard.writeText('${item.url}')" class="bg-gray-700 hover:bg-gray-600 text-xs px-2.5 py-1.5 rounded-lg text-white">نسخ</button>
             `;
@@ -269,7 +328,7 @@ function loadUserFiles() {
     });
 }
 
-// Dropzone UI Setup
+// 9. إعداد Drag & Drop
 const dropzone = document.getElementById('dropzone');
 dropzone.onclick = () => document.getElementById('fileInput').click();
 dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
@@ -280,5 +339,5 @@ dropzone.ondrop = (e) => {
     document.getElementById('fileInput').files = e.dataTransfer.files;
 };
 
-// Init App
+// بدء التطبيق
 loadActiveServers();
