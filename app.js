@@ -46,24 +46,21 @@ const storage = getStorage(app);
 
 let currentUser = null;
 let confirmationResult = null;
-let activeServersMap = {};
 
 // 1. جلب السيرفرات النشطة من Realtime Database
 function loadActiveServers() {
     const serversRef = ref(db, 'servers');
     onValue(serversRef, (snapshot) => {
         const select = document.getElementById('serverSelect');
-        select.innerHTML = '<option value="default">سيرفر التخزين الافتراضي (Firebase Storage)</option>';
-        activeServersMap = {};
+        select.innerHTML = '<option value="default">سيرفر التخزين السحابي السريع (Firebase Storage)</option>';
 
         if (snapshot.exists()) {
             snapshot.forEach((child) => {
                 const server = child.val();
                 if (server.active) {
-                    activeServersMap[child.key] = server;
                     const opt = document.createElement('option');
                     opt.value = child.key;
-                    opt.textContent = `${server.name} (${server.type === 'custom_api' ? 'PHP/Custom' : 'Firebase'})`;
+                    opt.textContent = `${server.name} (${server.type || 'Storage'})`;
                     select.appendChild(opt);
                 }
             });
@@ -173,43 +170,7 @@ document.getElementById('logoutBtn').onclick = () => {
     document.getElementById('profileModal').classList.add('hidden');
 };
 
-// 4. دالة الرفع لسيرفر PHP الخارجي مع تجاوز حظر CORS و Mixed Content عبر البروكسي
-async function uploadToCustomApi(file, endpointUrl) {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(endpointUrl);
-
-    try {
-        const response = await fetch(proxyUrl, {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.status === 'success' || data.url) {
-            return data.url;
-        } else {
-            throw new Error(data.message || 'فشل الرفع من سيرفر PHP');
-        }
-    } catch (err) {
-        console.warn("جاري المحاولة المباشرة...", err);
-        const directResponse = await fetch(endpointUrl, {
-            method: 'POST',
-            body: formData
-        });
-        const directData = await directResponse.json();
-        
-        if (directData.status === 'success' || directData.url) {
-            return directData.url;
-        } else {
-            throw new Error(directData.message || 'فشل الرفع من سيرفر PHP');
-        }
-    }
-}
-
-// 5. دالة الرفع لسيرفر Firebase Storage الافتراضي
+// 4. دالة الرفع المباشرة والسريعة على Firebase Storage
 function uploadToFirebase(file, onProgress) {
     return new Promise((resolve, reject) => {
         const fileRef = storageRef(storage, `uploads/${Date.now()}_${file.name}`);
@@ -229,12 +190,11 @@ function uploadToFirebase(file, onProgress) {
     });
 }
 
-// 6. زر الرفع الرئيسي
+// 5. زر الرفع الرئيسي
 document.getElementById('uploadBtn').onclick = async () => {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return alert("يرجى اختيار ملف أولاً");
 
-    const selectedServerKey = document.getElementById('serverSelect').value;
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const uploadPercent = document.getElementById('uploadPercent');
@@ -246,29 +206,16 @@ document.getElementById('uploadBtn').onclick = async () => {
 
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        let fileUrl = '';
 
         try {
             document.getElementById('uploadStatus').textContent = `جاري رفع ${file.name}...`;
 
-            if (selectedServerKey !== 'default' && activeServersMap[selectedServerKey]) {
-                const serverEndpoint = activeServersMap[selectedServerKey].endpoint || 'http://img-12.rf.gd/upload.php';
-                
-                progressBar.style.width = '50%';
-                uploadPercent.textContent = '50%';
-                
-                fileUrl = await uploadToCustomApi(file, serverEndpoint);
+            const fileUrl = await uploadToFirebase(file, (percent) => {
+                progressBar.style.width = percent + '%';
+                uploadPercent.textContent = Math.round(percent) + '%';
+            });
 
-                progressBar.style.width = '100%';
-                uploadPercent.textContent = '100%';
-            } else {
-                fileUrl = await uploadToFirebase(file, (percent) => {
-                    progressBar.style.width = percent + '%';
-                    uploadPercent.textContent = Math.round(percent) + '%';
-                });
-            }
-
-            // حفظ بيانات الملف المرفوع في Firebase
+            // حفظ بيانات الملف المرفوع في Realtime Database
             const uploadRecord = {
                 fileName: file.name,
                 fileSize: file.size,
@@ -278,7 +225,7 @@ document.getElementById('uploadBtn').onclick = async () => {
             };
             push(ref(db, 'uploads'), uploadRecord);
 
-            // عرض نتيجة الرفع
+            // عرض نتيجة الرفع بروابط المباشرة و QR
             renderFileResult(file.name, fileUrl);
             resultSection.classList.remove('hidden');
 
@@ -288,7 +235,7 @@ document.getElementById('uploadBtn').onclick = async () => {
     }
 };
 
-// 7. عرض الروابط ورموز QR للملفات المرفوعة
+// 6. عرض الروابط ورموز QR للملفات المرفوعة
 function renderFileResult(fileName, url) {
     const linksList = document.getElementById('linksList');
     const qrId = 'qr_' + Math.random().toString(36).substr(2, 9);
@@ -311,7 +258,7 @@ function renderFileResult(fileName, url) {
     setTimeout(() => new QRCode(document.getElementById(qrId), { text: url, width: 80, height: 80 }), 100);
 }
 
-// 8. جلب واستعراض ملفات المستخدم داخل البروفايل
+// 7. جلب واستعراض ملفات المستخدم داخل البروفايل
 function loadUserFiles() {
     if (!currentUser) return;
     document.getElementById('profileName').textContent = currentUser.displayName || 'مستخدم';
@@ -344,7 +291,7 @@ function loadUserFiles() {
     });
 }
 
-// 9. إعداد Drag & Drop
+// 8. إعداد Drag & Drop
 const dropzone = document.getElementById('dropzone');
 dropzone.onclick = () => document.getElementById('fileInput').click();
 dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
