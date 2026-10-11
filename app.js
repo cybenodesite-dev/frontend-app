@@ -6,7 +6,7 @@ import {
     onValue 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// إعدادات Firebase Realtime Database المجانية فقط
+// إعدادات Firebase Realtime Database
 const firebaseConfig = {
     databaseURL: "https://cn-img-default-rtdb.firebaseio.com"
 };
@@ -14,7 +14,34 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// دالة تحويل الملف إلى Base64 للرفع المباشر
+// 1. جلب وإظهار السيرفرات في القائمة المنسدلة تلقائياً
+function loadActiveServers() {
+    const select = document.getElementById('serverSelect');
+    if (!select) return;
+
+    // إضافة الخيارات الثابتة مباشرة لضمان ظهورها دائماً
+    select.innerHTML = `
+        <option value="custom_php">سيرفر PHP المباشر (http://img-12.rf.gd/upload.php)</option>
+    `;
+
+    // جلب أي سيرفرات إضافية مسجلة من Realtime Database إن وجدت
+    const serversRef = ref(db, 'servers');
+    onValue(serversRef, (snapshot) => {
+        if (snapshot.exists()) {
+            snapshot.forEach((child) => {
+                const server = child.val();
+                if (server.active) {
+                    const opt = document.createElement('option');
+                    opt.value = child.key;
+                    opt.textContent = `${server.name} (${server.type || 'Custom'})`;
+                    select.appendChild(opt);
+                }
+            });
+        }
+    });
+}
+
+// 2. دالة تحويل الملف إلى Base64 للرفع المباشر
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -24,7 +51,7 @@ function fileToBase64(file) {
     });
 }
 
-// دالة الرفع المباشرة لسيرفر PHP
+// 3. دالة الرفع المباشرة لسيرفر PHP
 async function uploadFileDirectly(file, endpointUrl) {
     const base64Data = await fileToBase64(file);
 
@@ -47,7 +74,7 @@ async function uploadFileDirectly(file, endpointUrl) {
     }
 }
 
-// زر الرفع الرئيسي
+// 4. زر الرفع الرئيسي
 document.getElementById('uploadBtn').onclick = async () => {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return alert("يرجى اختيار ملف أولاً");
@@ -77,7 +104,7 @@ document.getElementById('uploadBtn').onclick = async () => {
             progressBar.style.width = '100%';
             uploadPercent.textContent = '100%';
 
-            // حفظ بيانات الرفع مجاناً في Realtime Database
+            // حفظ بيانات الرفع في Realtime Database
             push(ref(db, 'uploads'), {
                 fileName: file.name,
                 fileSize: file.size,
@@ -95,7 +122,7 @@ document.getElementById('uploadBtn').onclick = async () => {
     }
 };
 
-// عرض النتائج
+// 5. عرض النتائج ورموز QR
 function renderFileResult(fileName, url) {
     const linksList = document.getElementById('linksList');
     const qrId = 'qr_' + Math.random().toString(36).substr(2, 9);
@@ -116,13 +143,18 @@ function renderFileResult(fileName, url) {
     setTimeout(() => new QRCode(document.getElementById(qrId), { text: url, width: 80, height: 80 }), 100);
 }
 
-// Drag & Drop
+// 6. إعدادات Drag & Drop
 const dropzone = document.getElementById('dropzone');
-dropzone.onclick = () => document.getElementById('fileInput').click();
-dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
-dropzone.ondragleave = () => dropzone.classList.remove('dragover');
-dropzone.ondrop = (e) => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-    document.getElementById('fileInput').files = e.dataTransfer.files;
-};
+if (dropzone) {
+    dropzone.onclick = () => document.getElementById('fileInput').click();
+    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
+    dropzone.ondragleave = () => dropzone.classList.remove('dragover');
+    dropzone.ondrop = (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        document.getElementById('fileInput').files = e.dataTransfer.files;
+    };
+}
+
+// بدء التطبيق
+loadActiveServers();
