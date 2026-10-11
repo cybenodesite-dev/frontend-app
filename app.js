@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// إعدادات Firebase Realtime Database لحفظ سجلات الرفع
+// إعدادات Firebase Realtime Database
 const firebaseConfig = {
     databaseURL: "https://cn-img-default-rtdb.firebaseio.com"
 };
@@ -9,26 +9,52 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ضع هنا رابط Cloudflare Worker الخاص بك
-const WORKER_URL = "https://YOUR_WORKER_NAME.workers.dev"; 
+// خريطة لتخزين بيانات السيرفرات المجلوبة ديناميكياً من لوحة التحكم
+let activeServersMap = {};
 
-// 1. إظهار السيرفرات المتاحة في الواجهة
+// 1. جلب السيرفرات النشطة من لوحة التحكم تلقائياً
 function loadActiveServers() {
-    const select = document.getElementById('serverSelect');
-    if (!select) return;
+    const serversRef = ref(db, 'servers');
+    
+    onValue(serversRef, (snapshot) => {
+        const select = document.getElementById('serverSelect');
+        if (!select) return;
 
-    select.innerHTML = `
-        <option value="vercel_blob_1">سيرفر Vercel Blob السريع (1GB)</option>
-        <option value="supabase_1">سيرفر Supabase السحابي (5GB)</option>
-    `;
+        select.innerHTML = '';
+        activeServersMap = {};
+
+        if (snapshot.exists()) {
+            snapshot.forEach((child) => {
+                const server = child.val();
+                // التأكد من أن السيرفر مفعل
+                if (server.active) {
+                    activeServersMap[child.key] = server;
+                    
+                    const opt = document.createElement('option');
+                    opt.value = child.key;
+                    opt.textContent = `${server.name} (${server.type || 'Cloud Storage'})`;
+                    select.appendChild(opt);
+                }
+            });
+        } else {
+            select.innerHTML = '<option value="">لا توجد سيرفرات متاحة حالياً</option>';
+        }
+    });
 }
 
-// 2. دالة الرفع الموحدة عبر الووركر
-async function uploadViaWorker(file, serverId) {
-    const response = await fetch(WORKER_URL, {
+// 2. دالة الرفع الديناميكية الموحدة عبر رابط السيرفر/الووركر المسجل في الداتابيز
+async function uploadToSelectedServer(file, serverConfig) {
+    // قراءة رابط السيرفر (Worker URL) المعرف في لوحة التحكم
+    const targetEndpoint = serverConfig.endpoint || serverConfig.url;
+
+    if (!targetEndpoint) {
+        throw new Error("رابط السيرفر غير معرف في لوحة التحكم");
+    }
+
+    const response = await fetch(targetEndpoint, {
         method: 'POST',
         headers: {
-            'x-server-id': serverId,
+            'x-server-id': serverConfig.serverId || 'vercel_blob_1', // المعرف إن وجد
             'x-file-name': `${Date.now()}_${file.name}`,
             'content-type': file.type
         },
@@ -36,10 +62,13 @@ async function uploadViaWorker(file, serverId) {
     });
 
     const data = await response.json();
+    
     if (data.status === 'success' && data.url) {
         return data.url;
+    } else if (data.url) {
+        return data.url;
     } else {
-        throw new Error(data.message || 'فشل الرفع عبر سيرفر الووركر');
+        throw new Error(data.message || data.error || 'فشل الرفع من السيرفر المنسق');
     }
 }
 
@@ -49,6 +78,12 @@ document.getElementById('uploadBtn').onclick = async () => {
     if (!files.length) return alert("يرجى اختيار ملف أولاً");
 
     const selectedServerKey = document.getElementById('serverSelect').value;
+    const selectedServerConfig = activeServersMap[selectedServerKey];
+
+    if (!selectedServerConfig) {
+        return alert("يرجى اختيار سيرفر رفع صحيح من القائمة");
+    }
+
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const uploadPercent = document.getElementById('uploadPercent');
@@ -64,24 +99,26 @@ document.getElementById('uploadBtn').onclick = async () => {
         try {
             document.getElementById('uploadStatus').textContent = `جاري رفع ${file.name}...`;
             
-            progressBar.style.width = '50%';
-            uploadPercent.textContent = '50%';
+            progressBar.style.width = '40%';
+            uploadPercent.textContent = '40%';
 
-            const fileUrl = await uploadViaWorker(file, selectedServerKey);
+            // رفع الملف بناءً على بيانات السيرفر المختار من الداتابيز
+            const fileUrl = await uploadToSelectedServer(file, selectedServerConfig);
 
             progressBar.style.width = '100%';
             uploadPercent.textContent = '100%';
 
-            // حفظ بيانات الرفع في Firebase Realtime Database
+            // تسجيل عملية الرفع في Firebase Realtime Database
             push(ref(db, 'uploads'), {
                 fileName: file.name,
                 fileSize: file.size,
                 url: fileUrl,
-                server: selectedServerKey,
+                serverId: selectedServerKey,
+                serverName: selectedServerConfig.name,
                 timestamp: Date.now()
             });
 
-            // عرض النتيجة ورمز QR
+            // عرض النتيجة برابط مباشر ورامز QR
             renderFileResult(file.name, fileUrl);
             resultSection.classList.remove('hidden');
 
@@ -91,7 +128,7 @@ document.getElementById('uploadBtn').onclick = async () => {
     }
 };
 
-// 4. عرض النتائج
+// 4. عرض النتيجة ورمز QR
 function renderFileResult(fileName, url) {
     const linksList = document.getElementById('linksList');
     const qrId = 'qr_' + Math.random().toString(36).substr(2, 9);
@@ -125,4 +162,5 @@ if (dropzone) {
     };
 }
 
+// تشغيل جلب السيرفرات فور فتح الصفحة
 loadActiveServers();
