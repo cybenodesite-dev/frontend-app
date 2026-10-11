@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// إعدادات Firebase Realtime Database لحفظ السجلات
+// إعدادات Firebase Realtime Database لحفظ سجلات الرفع
 const firebaseConfig = {
     databaseURL: "https://cn-img-default-rtdb.firebaseio.com"
 };
@@ -9,81 +9,46 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 1. تعريف السيرفرات المتاحة (Supabase + Vercel Blob)
-const storageServers = {
-    "supabase_1": {
-        name: "سيرفر Supabase السحابي (5GB)",
-        type: "supabase",
-        url: "https://YOUR_SUPABASE_PROJECT_ID.supabase.co", // استبدل برابط مشروع Supabase
-        key: "YOUR_SUPABASE_ANON_KEY"                       // استبدل بمفتاح Anon Key
-    },
-    "vercel_blob": {
-        name: "سيرفر Vercel Blob السريع (1GB)",
-        type: "vercel_blob",
-        uploadApi: "/api/upload-blob"                       // مسار الرفع الخاص بـ Vercel Blob
-    }
-};
+// ضع هنا رابط Cloudflare Worker الخاص بك
+const WORKER_URL = "https://YOUR_WORKER_NAME.workers.dev"; 
 
-// 2. تحميل السيرفرات المتاحة في القائمة المنسدلة
+// 1. إظهار السيرفرات المتاحة في الواجهة
 function loadActiveServers() {
     const select = document.getElementById('serverSelect');
     if (!select) return;
 
-    select.innerHTML = '';
-    Object.keys(storageServers).forEach(key => {
-        const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = storageServers[key].name;
-        select.appendChild(opt);
-    });
+    select.innerHTML = `
+        <option value="vercel_blob_1">سيرفر Vercel Blob السريع (1GB)</option>
+        <option value="supabase_1">سيرفر Supabase السحابي (5GB)</option>
+    `;
 }
 
-// 3. دالة الرفع إلى Supabase Storage
-async function uploadToSupabase(file, serverConfig) {
-    const fileName = `${Date.now()}_${file.name}`;
-    const uploadUrl = `${serverConfig.url}/storage/v1/object/uploads/${fileName}`;
-
-    const response = await fetch(uploadUrl, {
+// 2. دالة الرفع الموحدة عبر الووركر
+async function uploadViaWorker(file, serverId) {
+    const response = await fetch(WORKER_URL, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${serverConfig.key}`,
-            'apiKey': serverConfig.key,
-            'Content-Type': file.type
+            'x-server-id': serverId,
+            'x-file-name': `${Date.now()}_${file.name}`,
+            'content-type': file.type
         },
         body: file
     });
 
-    if (response.ok) {
-        return `${serverConfig.url}/storage/v1/object/public/uploads/${fileName}`;
-    } else {
-        const err = await response.json();
-        throw new Error(err.message || 'فشل الرفع إلى Supabase');
-    }
-}
-
-// 4. دالة الرفع إلى Vercel Blob
-async function uploadToVercelBlob(file, serverConfig) {
-    const response = await fetch(`${serverConfig.uploadApi}?filename=${encodeURIComponent(file.name)}`, {
-        method: 'POST',
-        body: file
-    });
-
     const data = await response.json();
-    if (response.ok && data.url) {
+    if (data.status === 'success' && data.url) {
         return data.url;
     } else {
-        throw new Error(data.error || 'فشل الرفع إلى Vercel Blob');
+        throw new Error(data.message || 'فشل الرفع عبر سيرفر الووركر');
     }
 }
 
-// 5. زر الرفع الرئيسي
+// 3. زر الرفع الرئيسي
 document.getElementById('uploadBtn').onclick = async () => {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return alert("يرجى اختيار ملف أولاً");
 
     const selectedServerKey = document.getElementById('serverSelect').value;
-    const serverConfig = storageServers[selectedServerKey];
-
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const uploadPercent = document.getElementById('uploadPercent');
@@ -95,24 +60,19 @@ document.getElementById('uploadBtn').onclick = async () => {
 
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        let fileUrl = '';
 
         try {
             document.getElementById('uploadStatus').textContent = `جاري رفع ${file.name}...`;
             
-            progressBar.style.width = '40%';
-            uploadPercent.textContent = '40%';
+            progressBar.style.width = '50%';
+            uploadPercent.textContent = '50%';
 
-            if (serverConfig.type === 'supabase') {
-                fileUrl = await uploadToSupabase(file, serverConfig);
-            } else if (serverConfig.type === 'vercel_blob') {
-                fileUrl = await uploadToVercelBlob(file, serverConfig);
-            }
+            const fileUrl = await uploadViaWorker(file, selectedServerKey);
 
             progressBar.style.width = '100%';
             uploadPercent.textContent = '100%';
 
-            // حفظ بيانات الملف في Realtime Database
+            // حفظ بيانات الرفع في Firebase Realtime Database
             push(ref(db, 'uploads'), {
                 fileName: file.name,
                 fileSize: file.size,
@@ -121,7 +81,7 @@ document.getElementById('uploadBtn').onclick = async () => {
                 timestamp: Date.now()
             });
 
-            // عرض نتيجة الرفع
+            // عرض النتيجة ورمز QR
             renderFileResult(file.name, fileUrl);
             resultSection.classList.remove('hidden');
 
@@ -131,7 +91,7 @@ document.getElementById('uploadBtn').onclick = async () => {
     }
 };
 
-// 6. عرض النتيجة ورمز QR
+// 4. عرض النتائج
 function renderFileResult(fileName, url) {
     const linksList = document.getElementById('linksList');
     const qrId = 'qr_' + Math.random().toString(36).substr(2, 9);
@@ -152,7 +112,7 @@ function renderFileResult(fileName, url) {
     setTimeout(() => new QRCode(document.getElementById(qrId), { text: url, width: 80, height: 80 }), 100);
 }
 
-// 7. Drag & Drop
+// 5. Drag & Drop
 const dropzone = document.getElementById('dropzone');
 if (dropzone) {
     dropzone.onclick = () => document.getElementById('fileInput').click();
