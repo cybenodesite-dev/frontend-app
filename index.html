@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منصة CN-Img السحابية | رفع وإدارة الملفات المتقدمة</title>
 
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Cairo Font -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-600">
@@ -28,7 +33,8 @@
                 <button onclick="switchMainPage('home')" class="hover:text-blue-400 transition">الرئيسية</button>
                 <button onclick="switchMainPage('my-files')" class="hover:text-blue-400 transition">ملفاتي السحابية</button>
                 <button onclick="switchMainPage('pricing')" class="hover:text-blue-400 transition">الخطط والاشتراكات</button>
-                <button onclick="switchMainPage('about')" class="hover:text-blue-400 transition">من نحن والأمان</button>
+                <button onclick="switchMainPage('about')" class="hover:text-blue-400 transition">من نحن</button>
+                <button onclick="switchMainPage('legal')" class="hover:text-blue-400 transition">الصفحات القانونية</button>
                 <button id="navSdkBtn" onclick="switchMainPage('sdk')" class="hidden text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5"><i class="fa-solid fa-server text-xs"></i> SDK السيرفر الخاص</button>
             </nav>
 
@@ -111,7 +117,6 @@
 
                 <div class="text-center space-y-2 mb-8">
                     <h1 class="text-3xl md:text-4xl font-black text-white tracking-wide">رفع الملفات والصور السحابية</h1>
-                    <p class="text-gray-400 text-sm max-w-md mx-auto">ارفع ملفاتك بسرعة فائقة عبر بروتوكول توجيه الـ Workers الموزع عالمياً</p>
                 </div>
 
                 <!-- Dropzone Box -->
@@ -234,43 +239,70 @@
             </div>
         </div>
 
-        <!-- PAGE 4: About, Security & Terms Page -->
+        <!-- PAGE 4: About Us Page -->
         <div id="pageAbout" class="main-page hidden space-y-6">
-            <div class="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-8">
-                <div>
-                    <h2 class="text-2xl font-black text-white mb-2">من نحن وكيف نحمي ملفاتك؟</h2>
-                    <p class="text-gray-400 text-sm leading-relaxed">
-                        منصة <span class="text-blue-400 font-bold">CN-Img</span> هي منصة تخزين وتوجيه سحابية موزعة تعتمد على تقنيات Edge Computing والتشفير السحابي المباشر. يهدف نظامنا لتسهيل رفع وصيانة الملفات بأقصى درجات الأمان والخصوصية دون الإطلاع عليها.
+            <div class="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-6">
+                <div class="border-b border-gray-800 pb-4">
+                    <h2 class="text-2xl font-black text-white mb-1">من نحن؟</h2>
+                    <p class="text-xs text-blue-400 font-semibold">CybeNode Distributed Cloud Infrastructure</p>
+                </div>
+                <div class="space-y-4 text-sm text-gray-300 leading-relaxed">
+                    <p>
+                        منصة <strong class="text-white">CN-Img</strong> هي إحدى منصات شبكة <strong class="text-blue-400">CybeNode Network</strong> المتخصصة في تقديم حلول التخزين وتوجيه البيانات السحابية فائقة السرعة. تم بناء البنية التحتية للمنصة بالاعتماد على أحدث تقنيات المعالجة السحابية لضمان وصول الملفات والصور المرفوعة إلى المطورين والمستخدمين في كافة أنحاء العالم بأقل زمن استجابة ممكن.
+                    </p>
+                    <p>
+                        نحن نركز بشكل أساسي على توفير بيئة رفع سهلة، آمنة، وخالية من التعقيدات، مع حماية فائقة لخصوصية البيانات وتشفير المخرجات. كما نقدم للمؤسسات والمطورين خيارات الحصول على سيرفرات سحابية مدارة بالكامل من خلال حزم SDK مخصصة.
                     </p>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-800">
-                    <div class="space-y-2">
-                        <h3 class="text-md font-bold text-blue-400"><i class="fa-solid fa-shield-halved ml-2"></i>سياسة الخصوصية والأمان</h3>
-                        <p class="text-xs text-gray-400 leading-relaxed">
-                            جميع الملفات يتم تشفيرها أثناء النقل مع بروتوكولات SSL/TLS 1.3. نحن لا نشارك بيانات المستخدمين مع أي أطراف ثالثة ونلتزم بحفظ سرية السجلات بأساليب متطورة.
-                        </p>
-                    </div>
-
-                    <div class="space-y-2">
-                        <h3 class="text-md font-bold text-blue-400"><i class="fa-solid fa-file-contract ml-2"></i>شروط الاستخدام</h3>
-                        <p class="text-xs text-gray-400 leading-relaxed">
-                            يُمنع منعاً باتاً رفع المواد الضارة، أو الفيروسات، أو المحتوى المخالف للقوانين الدولية. أي انتهاك يؤدي لحظر الحساب وعنوان IP فوراً.
-                        </p>
-                    </div>
-                </div>
-
                 <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
-                        <h4 class="font-bold text-sm text-white">تواصل معنا للدعم والخدمات</h4>
-                        <p class="text-xs text-blue-400 mt-0.5">info@cybenode.site</p>
+                        <h4 class="font-bold text-sm text-white">هل لديك استفسار أو تتطلع لشراكة؟</h4>
+                        <p class="text-xs text-gray-400">تواصل مع الفريق التنفيذي مباشرة عبر البريد الإلكتروني الرسمى</p>
                     </div>
-                    <a href="mailto:info@cybenode.site" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition">إرسال رسالة بريدية</a>
+                    <a href="mailto:info@cybenode.site" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition">info@cybenode.site</a>
                 </div>
             </div>
         </div>
 
-        <!-- PAGE 5: SDK Dedicated Server Page -->
+        <!-- PAGE 5: Legal & Policies Page (الصفحات القانونية الشاملة) -->
+        <div id="pageLegal" class="main-page hidden space-y-8">
+            <!-- Privacy Policy -->
+            <div class="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-4">
+                <h2 class="text-xl font-bold text-blue-400 flex items-center gap-2 border-b border-gray-800 pb-3">
+                    <i class="fa-solid fa-shield-halved"></i> سياسة الخصوصية وحماية البيانات
+                </h2>
+                <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
+                    <p>
+                        نحن في منصة <strong>CN-Img</strong> نضع خصوصية وأمان مستخدمينا في مقدمة أولوياتنا. توضح هذه الوثيقة طبيعة البيانات التي نجمعها وكيفية التعامل معها وحمايتها:
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400 mr-2">
+                        <li><strong>البيانات المجمعة:</strong> نجمع فقط البيانات المرفقة أثناء تسجيل الحساب (كالاسم والبريد الإلكتروني برغبتك)، إضافة لبيانات الملفات المرفوعة لمعالجتها وحفظها.</li>
+                        <li><strong>تشفير البيانات:</strong> يتم نقل جميع الملفات عبر بروتوكولات TSL/SSL المشفّرة عالمياً بدرجة تشفير 256-bit لمنع أي اعتراض للبيانات.</li>
+                        <li><strong>عدم المشاركة:</strong> نلتزم بتعهد صارم بعدم بيع، أو تأجير، أو مشاركة بيانات المستخدمين أو ملفاتهم الشخصية مع أي أطراف تجارية ثالثة.</li>
+                        <li><strong>حذف الملفات:</strong> يمتلك المستخدم كامل الحق والحرية في حذف ملفاته المرفوعة نهائياً من سيرفراتنا في أي وقت يشاء.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Terms of Service -->
+            <div class="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-4">
+                <h2 class="text-xl font-bold text-blue-400 flex items-center gap-2 border-b border-gray-800 pb-3">
+                    <i class="fa-solid fa-file-contract"></i> شروط وإرشادات الاستخدام
+                </h2>
+                <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
+                    <p>
+                        باستخدامك لمنصة CN-Img، فإنك توافق على الالتزام الكامل بالقواعد والشروط التالية:
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400 mr-2">
+                        <li><strong>المحتوى المحظور:</strong> يُحظر تماماً رفع أي ملفات تحتوي على برمجيات خبيثة، فيروسات، أو محتوى ينتهك حقوق الملكية الفكرية والطبع والنشر.</li>
+                        <li><strong>الاستخدام العادل:</strong> يجب عدم إساءة استخدام خوادم الرفع بالهجمات البرمجية أو الاستغلال المفرط لسعة النطاق الترددي (Bandwidth) بشكل يؤثر على باقي المستخدمين.</li>
+                        <li><strong>إنهاء الخدمة:</strong> تحتفظ الإدارة بحق تعليق أو حظر أي حساب ينتهك الشروط أو يستخدم المنصة في أنشطة غير قانونية دون إشعار مسبق.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 6: SDK Dedicated Server Page -->
         <div id="pageSdk" class="main-page hidden space-y-6">
             <div class="glass border border-amber-500/40 rounded-3xl p-6 md:p-8 space-y-6">
                 <div class="border-b border-gray-800 pb-4 flex justify-between items-center">
@@ -314,13 +346,14 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 border-t border-gray-800 py-6 text-center text-xs text-gray-500 space-y-2">
-        <div class="flex justify-center gap-4 text-gray-400">
-            <button onclick="switchMainPage('about')" class="hover:text-white">من نحن</button> • 
-            <button onclick="switchMainPage('about')" class="hover:text-white">سياسة الخصوصية</button> • 
-            <button onclick="switchMainPage('about')" class="hover:text-white">شروط الاستخدام</button>
+    <footer class="bg-gray-900 border-t border-gray-800 py-6 text-center text-xs text-gray-500 space-y-3">
+        <div class="flex justify-center flex-wrap gap-4 text-gray-400">
+            <button onclick="switchMainPage('about')" class="hover:text-white transition">من نحن</button> • 
+            <button onclick="switchMainPage('legal')" class="hover:text-white transition">سياسة الخصوصية</button> • 
+            <button onclick="switchMainPage('legal')" class="hover:text-white transition">شروط الاستخدام</button> •
+            <button onclick="switchMainPage('pricing')" class="hover:text-white transition">الخطط والأسعار</button>
         </div>
-        <p>جميع الحقوق محفوظة &copy; 2026 - منصة CN-Img | البريد الرسمي: info@cybenode.site</p>
+        <p>جميع الحقوق محفوظة &copy; 2026 - منصة CN-Img | البريد الرسمي: <a href="mailto:info@cybenode.site" class="text-blue-400 hover:underline">info@cybenode.site</a></p>
     </footer>
 
     <!-- Auth Modal with Forgot Password -->
@@ -377,34 +410,46 @@
                 </form>
             </div>
 
-            <!-- STEP 2: Survey -->
+            <!-- STEP 2: Mandatory Primary Data Survey -->
             <div id="authStep2" class="hidden space-y-4">
                 <div class="text-center">
                     <span class="text-xs text-blue-400 font-bold">الخطوة 1 من 2</span>
                     <h2 class="text-lg font-bold text-white mt-1">استكمال البيانات الأساسية</h2>
+                    <p class="text-xs text-gray-400">يرجى استكمال البيانات التالية للمتابعة (إجباري)</p>
                 </div>
 
                 <form id="profileSurveyForm" onsubmit="submitProfileSurvey(event)" class="space-y-3">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">الاسم بالكامل *</label>
-                        <input type="text" id="surveyName" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                        <input type="text" id="surveyName" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">النوع *</label>
-                            <select id="surveyGender" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                            <select id="surveyGender" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
                                 <option value="male">ذكر</option>
                                 <option value="female">أنثى</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">البلد *</label>
-                            <input type="text" id="surveyCountry" required placeholder="مصر" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                            <input type="text" id="surveyCountry" required placeholder="مصر" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">رقم الهاتف (اختياري)</label>
-                        <input type="tel" id="surveyPhone" placeholder="+201029583799" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                        <input type="tel" id="surveyPhone" placeholder="+201029583799" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">كيف سمعت عنا؟ *</label>
+                        <select id="surveyHearAbout" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                            <option value="facebook">فيسبوك (Facebook)</option>
+                            <option value="youtube">يوتيوب (YouTube)</option>
+                            <option value="google">محرك بحث جوجل</option>
+                            <option value="friend">عن طريق صديق</option>
+                            <option value="telegram">تليجرام (Telegram)</option>
+                            <option value="other">أخرى</option>
+                        </select>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition">المتابعة لاختيار الخطة</button>
                 </form>
