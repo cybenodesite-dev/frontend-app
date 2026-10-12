@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue, push, set, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, onValue, push, set, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// إعدادات Firebase الخاصة بك
+// 1. إعدادات Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyCFlIDNppjhYjnYNdZf6tGG45N480GDX50",
   authDomain: "cn-img.firebaseapp.com",
@@ -23,7 +23,22 @@ let currentUser = null;
 let selectedFilesArray = [];
 let targetPaymentPlan = null;
 
-// 1. مراقبة حالة التسجيل المباشرة وسرعة الاستجابة
+// ============================================================
+// 2. التحقق الفوري المباشر من LocalStorage قبل انتظار الشبكة (لتفادي تأخير ثانية الـ Refresh)
+// ============================================================
+(function checkInstantLocalSession() {
+    const cachedSession = localStorage.getItem('cn_user_session');
+    if (cachedSession) {
+        try {
+            currentUser = JSON.parse(cachedSession);
+            updateUserUI(); // تطبيق الواجهة فوراً
+        } catch (e) {
+            console.error("Local session parse error", e);
+        }
+    }
+})();
+
+// مراقبة جلسة Firebase للتأكيد المباشر
 onAuthStateChanged(auth, (user) => {
     if (user) {
         onValue(ref(db, `users/${user.uid}`), (snapshot) => {
@@ -43,18 +58,15 @@ onAuthStateChanged(auth, (user) => {
             updateUserUI();
         });
     } else {
-        const savedSession = localStorage.getItem('cn_user_session');
-        if (savedSession) {
-            currentUser = JSON.parse(savedSession);
-            updateUserUI();
-        } else {
-            currentUser = null;
-            updateUserUI();
-        }
+        localStorage.removeItem('cn_user_session');
+        currentUser = null;
+        updateUserUI();
     }
 });
 
-// 2. تحديث الواجهة بناءً على حالة تسجيل الدخول
+// ============================================================
+// 3. تحديث واجهة المستخدم فوراً بدون أي تأخير
+// ============================================================
 function updateUserUI() {
     const uploadBox = document.getElementById('uploadBoxSection');
     const loginGate = document.getElementById('loginRequiredGate');
@@ -67,15 +79,18 @@ function updateUserUI() {
         if (authBtn) authBtn.classList.add('hidden');
         if (profileMenu) profileMenu.classList.remove('hidden');
 
-        document.getElementById('userNameHeader').textContent = currentUser.name || 'المستخدم';
-        document.getElementById('planBadge').textContent = (currentUser.plan || 'FREE').toUpperCase();
+        const userNameEl = document.getElementById('userNameHeader');
+        const planBadgeEl = document.getElementById('planBadge');
+        const avatarEl = document.getElementById('userAvatarHeader');
 
-        if (currentUser.photoURL) {
-            document.getElementById('userAvatarHeader').src = currentUser.photoURL;
-        }
+        if (userNameEl) userNameEl.textContent = currentUser.name || 'المستخدم';
+        if (planBadgeEl) planBadgeEl.textContent = (currentUser.plan || 'FREE').toUpperCase();
+        if (avatarEl && currentUser.photoURL) avatarEl.src = currentUser.photoURL;
 
-        if (currentUser.plan === 'vip') {
-            document.getElementById('navSdkBtn').classList.remove('hidden');
+        const navSdk = document.getElementById('navSdkBtn');
+        if (navSdk) {
+            if (currentUser.plan === 'vip') navSdk.classList.remove('hidden');
+            else navSdk.classList.add('hidden');
         }
     } else {
         if (uploadBox) uploadBox.classList.add('hidden');
@@ -85,12 +100,29 @@ function updateUserUI() {
     }
 }
 
-// 3. تسجيل الدخول عبر Google
+// ============================================================
+// 4. تسجيل زيارة جديدة تلقائياً عند فتح/إعادة تحميل الصفحة (Refresh)
+// ============================================================
+function registerNewVisit() {
+    const visitsRef = ref(db, 'stats/visits');
+    runTransaction(visitsRef, (currentVisits) => {
+        return (currentVisits || 0) + 1;
+    });
+}
+
+// ============================================================
+// 5. تسجيل الدخول وحساب المشتركين بزيادة تلقائية
+// ============================================================
 document.getElementById('googleAuthBtn').onclick = async () => {
     try {
         const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
         currentUser = { uid: user.uid, name: user.displayName, email: user.email, photoURL: user.photoURL, plan: 'free' };
+        
+        // حفظ المستخدم الجديد
+        set(ref(db, `users/${user.uid}`), currentUser);
+        localStorage.setItem('cn_user_session', JSON.stringify(currentUser));
+
         document.getElementById('authStep1').classList.add('hidden');
         document.getElementById('authStep2').classList.remove('hidden');
     } catch (err) {
@@ -98,7 +130,6 @@ document.getElementById('googleAuthBtn').onclick = async () => {
     }
 };
 
-// 4. تسجيل الدخول وإنشاء الحساب عبر البريد
 window.handleUserAuth = async (e) => {
     e.preventDefault();
     const email = document.getElementById('authEmail').value;
@@ -112,6 +143,10 @@ window.handleUserAuth = async (e) => {
             try {
                 const newCred = await createUserWithEmailAndPassword(auth, email, password);
                 currentUser = { uid: newCred.user.uid, email, name: email.split('@')[0], plan: 'free' };
+                
+                set(ref(db, `users/${newCred.user.uid}`), currentUser);
+                localStorage.setItem('cn_user_session', JSON.stringify(currentUser));
+
                 document.getElementById('authStep1').classList.add('hidden');
                 document.getElementById('authStep2').classList.remove('hidden');
             } catch (createErr) {
@@ -123,7 +158,6 @@ window.handleUserAuth = async (e) => {
     }
 };
 
-// 5. نسيت كلمة المرور وإرسال الرابط
 window.showForgotPasswordView = () => {
     document.getElementById('authStep1').classList.add('hidden');
     document.getElementById('forgotPasswordStep').classList.remove('hidden');
@@ -146,7 +180,6 @@ window.handleForgotPassword = async (e) => {
     }
 };
 
-// 6. استبيان البيانات الأساسية
 window.submitProfileSurvey = (e) => {
     e.preventDefault();
     currentUser.name = document.getElementById('surveyName').value;
@@ -174,10 +207,8 @@ window.logoutUser = () => {
     updateUserUI();
 };
 
-// 7. بوابة الدفع اليدوي (فودافون كاش)
 window.openPaymentGateway = (planName, amount) => {
     if (!currentUser) return openAuthModal();
-
     targetPaymentPlan = { planName, amount };
     document.getElementById('payPlanTitle').textContent = planName.toUpperCase();
     document.getElementById('payAmountTitle').textContent = `${amount} ج.م`;
@@ -205,11 +236,10 @@ window.submitPaymentReceipt = (e) => {
         timestamp: Date.now()
     });
 
-    alert("تم إرسال طلب الترقية وإيصال التحويل للإدارة بنجاح! سيتم المراجعة وتفعيل الخطة في أقرب وقت.");
+    alert("تم إرسال طلب الترقية وإيصال التحويل للإدارة بنجاح!");
     closePaymentModal();
 };
 
-// 8. التنقل بين الصفحات الرئيسية
 window.switchMainPage = (pageName) => {
     document.querySelectorAll('.main-page').forEach(el => el.classList.add('hidden'));
 
@@ -240,8 +270,12 @@ window.closeAuthModal = () => {
     document.getElementById('authModal').classList.add('hidden');
 };
 
-// 9. جلب العدادات الحقيقية والسيرفرات
+// ============================================================
+// 6. جلب السيرفرات والعدادات الحية الحقيقية
+// ============================================================
 function initMainDashboard() {
+    registerNewVisit(); // تسجيل زيارة جديدة فوراً
+
     onValue(ref(db, 'servers'), (snapshot) => {
         const select = document.getElementById('serverSelect');
         if (!select) return;
@@ -262,24 +296,26 @@ function initMainDashboard() {
         }
     });
 
-    // العدادات الحقيقية المطابقة لملف JSON
+    // عدد الملفات المرفوعة الحقيقي
     onValue(ref(db, 'uploads'), (snapshot) => {
-        document.getElementById('liveFilesCount').textContent = snapshot.exists() ? snapshot.size : 0;
+        const fileCountEl = document.getElementById('liveFilesCount');
+        if (fileCountEl) fileCountEl.textContent = snapshot.exists() ? snapshot.size : 0;
     });
 
+    // عدد المشتركين الحقيقي
     onValue(ref(db, 'users'), (snapshot) => {
-        document.getElementById('liveUsersCount').textContent = snapshot.exists() ? snapshot.size : 0;
+        const userCountEl = document.getElementById('liveUsersCount');
+        if (userCountEl) userCountEl.textContent = snapshot.exists() ? snapshot.size : 0;
     });
 
-    onValue(ref(db, 'stats'), (snapshot) => {
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            if (data.visits) document.getElementById('liveVisitsCount').textContent = data.visits;
-        }
+    // إجمالي الزيارات
+    onValue(ref(db, 'stats/visits'), (snapshot) => {
+        const visitsCountEl = document.getElementById('liveVisitsCount');
+        if (visitsCountEl) visitsCountEl.textContent = snapshot.exists() ? snapshot.val() : 1;
     });
 }
 
-// 10. الرفع السحابي والمعاينة
+// 7. المعاينة والرفع السحابي
 const fileInput = document.getElementById('fileInput');
 const dropzone = document.getElementById('dropzone');
 
@@ -404,7 +440,7 @@ function renderResultCard(fileName, url) {
     setTimeout(() => new QRCode(document.getElementById(qrId), { text: url, width: 80, height: 80 }), 100);
 }
 
-// 11. عرض الملفات المرفوعة وتقديم SDK
+// 8. تحميل ملفات المستخدم والطلب
 function loadUserCloudFiles() {
     if (!currentUser) return;
 
