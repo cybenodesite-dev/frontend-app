@@ -14,10 +14,7 @@ interface UserSession {
   password?: string;
   photoURL: string;
   plan: 'free' | 'pro' | 'vip';
-  gender?: string;
   country?: string;
-  referralSource?: string;
-  surveyCompleted?: boolean;
 }
 
 interface UploadedFileItem {
@@ -36,6 +33,7 @@ interface ServerOption {
   name: string;
   endpoint: string;
   active: boolean;
+  allowedTypes?: string[];
 }
 
 interface PaymentSubmission {
@@ -144,16 +142,14 @@ export default function App() {
   const [resetSentSuccess, setResetSentSuccess] = useState(false);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authStep, setAuthStep] = useState<1 | 2 | 3>(1);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
-  const [selectedCountryDial] = useState('+20');
+  const [selectedCountryDial, setSelectedCountryDial] = useState('+20');
   const [authEmail, setAuthEmail] = useState('');
-  const [authPhone] = useState('');
   const [authPhoneNumber, setAuthPhoneNumber] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [surveyName, setSurveyName] = useState('');
-  const [surveyCountry] = useState('مصر');
+  const [surveyCountry, setSurveyCountry] = useState('مصر');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -177,22 +173,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      if (path === '/privacy-policy') setCurrentPage('privacy');
-      else if (path === '/terms-of-service') setCurrentPage('terms');
-      else if (path === '/about-us') setCurrentPage('about');
-      else if (path === '/contact-us') setCurrentPage('contact');
-      else if (path === '/pricing') setCurrentPage('pricing');
-      else if (path === '/my-files') setCurrentPage('my-files');
-      else setCurrentPage('home');
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  useEffect(() => {
     const fetchDatabaseData = async () => {
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/.json`);
@@ -205,6 +185,7 @@ export default function App() {
               name: srv.name || 'سيرفر عام',
               endpoint: srv.endpoint || '',
               active: srv.active ?? true,
+              allowedTypes: srv.allowedTypes || ['جميع الصيغ'],
             }));
             const activeOnly = parsedServers.filter((s) => s.active);
             setServersList(activeOnly);
@@ -233,7 +214,7 @@ export default function App() {
             setSubscribersCount(Object.keys(dbData.users).length);
           }
 
-          const currentVisits = dbData.stats?.visits || 1422;
+          const currentVisits = dbData.stats?.visits || 1437;
           const newVisits = currentVisits + 1;
           setVisitsCount(newVisits);
 
@@ -260,7 +241,6 @@ export default function App() {
   }, [currentUser]);
 
   const openAuthModal = () => {
-    setAuthStep(1);
     setAuthMode('login');
     setAuthModalOpen(true);
   };
@@ -271,6 +251,7 @@ export default function App() {
 
   const logoutUser = () => {
     setCurrentUser(null);
+    localStorage.removeItem('cn_user_session');
     navigateToPage('home');
     setMobileMenuOpen(false);
   };
@@ -283,20 +264,28 @@ export default function App() {
     setForgotModalOpen(true);
   };
 
-  // Google Sign-In Simulation
+  const handleSendResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forgotMethod === 'email') {
+      const resetUrl = `mailto:${forgotEmail}?subject=إعادة تعيين كلمة المرور - CN Files&body=اضغط هنا لإعادة تعيين كلمة المرور الخاصة بحسابك.`;
+      window.open(resetUrl, '_blank');
+    } else {
+      alert(`تم إرسال رابط إعادة تعيين كلمة المرور عبر SMS إلى الرقم: ${selectedCountryDial}${forgotPhone}`);
+    }
+    setResetSentSuccess(true);
+  };
+
   const handleGoogleSignIn = () => {
     const googleUser: UserSession = {
-      uid: 'Flh0crkbJThjwudCncFwFcYmYG82',
-      name: 'Mahmoud Mostafa',
-      email: 'support.cybenode@gmail.com',
+      uid: 'usr_g_' + Date.now(),
+      name: 'مستخدم Google جديد',
+      email: 'user' + Math.floor(Math.random() * 1000) + '@gmail.com',
       photoURL: 'https://lh3.googleusercontent.com/a/ACg8ocJIrK54HMpXNnUzs0YtdPqvD31DlS9gHkAzrcEONlLLeuJiZeCA=s96-c',
       plan: 'free',
-      country: 'مصر',
-      surveyCompleted: true,
+      country: surveyCountry,
     };
     setCurrentUser(googleUser);
     closeAuthModal();
-    alert('تم تسجيل الدخول بنجاح باستخدام حساب Google!');
   };
 
   const openPaymentModal = (plan: 'pro' | 'vip') => {
@@ -351,48 +340,18 @@ export default function App() {
     const cleanNumber = authPhoneNumber.trim().replace(/^0+/, '');
     const fullPhone = `${selectedCountryDial}${cleanNumber}`;
 
-    if (authMode === 'login') {
-      const loggedUser: UserSession = {
-        uid: 'Flh0crkbJThjwudCncFwFcYmYG82',
-        name: authMethod === 'email' ? authEmail.split('@')[0] : 'Mahmoud Mostafa',
-        email: authMethod === 'email' ? authEmail : 'support.cybenode@gmail.com',
-        phone: fullPhone,
-        photoURL: 'https://ui-avatars.com/api/?name=Mahmoud+Mostafa&background=2563eb&color=fff',
-        plan: 'free',
-        country: 'مصر',
-        surveyCompleted: true,
-      };
-      setCurrentUser(loggedUser);
-      closeAuthModal();
-      alert(`أهلاً بعودتك، ${loggedUser.name}! تم تسجيل الدخول بنجاح.`);
-    } else {
-      setSurveyName(authMethod === 'email' ? authEmail.split('@')[0] : 'مستخدم جديد');
-      setAuthStep(2);
-    }
-  };
-
-  const selectInitialPlan = (planType: 'free' | 'pro' | 'vip') => {
-    if (planType !== 'free') {
-      closeAuthModal();
-      openPaymentModal(planType);
-      return;
-    }
-
-    const newUser: UserSession = {
+    const loggedUser: UserSession = {
       uid: 'usr_' + Date.now().toString(36),
-      name: surveyName || 'مستخدم جديد',
+      name: surveyName || (authMethod === 'email' ? authEmail.split('@')[0] : 'مستخدم ' + cleanNumber.slice(-4)),
       email: authMethod === 'email' ? authEmail : undefined,
-      phone: authPhone || undefined,
-      password: authPassword,
+      phone: authMethod === 'phone' ? fullPhone : undefined,
       photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(surveyName || 'User')}&background=2563eb&color=fff`,
       plan: 'free',
       country: surveyCountry,
-      surveyCompleted: true,
     };
 
-    setCurrentUser(newUser);
+    setCurrentUser(loggedUser);
     closeAuthModal();
-    alert('تم إنشاء حسابك وتفعيل الخطة المجانية بنجاح!');
   };
 
   const handleUploadClick = async () => {
@@ -457,69 +416,71 @@ export default function App() {
   };
 
   const userFiles = currentUser ? cloudFiles.filter((f) => f.userId === currentUser.uid) : [];
+  const activeServerObj = serversList.find((s) => s.key === selectedServer);
 
   return (
     <div className="bg-[#070a12] text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-600">
-      {/* Header Bar */}
+      {/* Navbar with Fixed Spacing */}
       <header className="bg-gray-900/90 backdrop-blur-md border-b border-gray-800/80 sticky top-0 z-40 shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
           <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); }} className="flex items-center space-x-3 space-x-reverse cursor-pointer">
             <img src={LOGO_URL} alt="CN Files Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-blue-500/20 border border-blue-500/30" />
             <span className="text-xl font-extrabold tracking-wide text-white">
-              CN Files <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full mr-2">v3.0</span>
+              CN Files <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full mr-1.5">v3.0</span>
             </span>
           </a>
 
-          <nav className="hidden md:flex items-center space-x-6 space-x-reverse text-sm font-semibold">
-            <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); }} className={`transition ${currentPage === 'home' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
+          {/* Corrected Navigation Gaps */}
+          <nav className="hidden lg:flex items-center space-x-8 space-x-reverse text-sm font-semibold">
+            <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); }} className={`transition px-1 py-1 ${currentPage === 'home' ? 'text-blue-400 font-bold border-b-2 border-blue-500' : 'text-gray-300 hover:text-blue-400'}`}>
               الرئيسية
             </a>
-            <a href="/my-files" onClick={(e) => { e.preventDefault(); navigateToPage('my-files'); }} className={`transition ${currentPage === 'my-files' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
+            <a href="/my-files" onClick={(e) => { e.preventDefault(); navigateToPage('my-files'); }} className={`transition px-1 py-1 ${currentPage === 'my-files' ? 'text-blue-400 font-bold border-b-2 border-blue-500' : 'text-gray-300 hover:text-blue-400'}`}>
               ملفاتي السحابية
             </a>
-            <a href="/pricing" onClick={(e) => { e.preventDefault(); navigateToPage('pricing'); }} className={`transition ${currentPage === 'pricing' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
+            <a href="/pricing" onClick={(e) => { e.preventDefault(); navigateToPage('pricing'); }} className={`transition px-1 py-1 ${currentPage === 'pricing' ? 'text-blue-400 font-bold border-b-2 border-blue-500' : 'text-gray-300 hover:text-blue-400'}`}>
               الخطط والاشتراكات
             </a>
-            <a href="/about-us" onClick={(e) => { e.preventDefault(); navigateToPage('about'); }} className={`transition ${currentPage === 'about' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
+            <a href="/about-us" onClick={(e) => { e.preventDefault(); navigateToPage('about'); }} className={`transition px-1 py-1 ${currentPage === 'about' ? 'text-blue-400 font-bold border-b-2 border-blue-500' : 'text-gray-300 hover:text-blue-400'}`}>
               من نحن
             </a>
-            <a href="/contact-us" onClick={(e) => { e.preventDefault(); navigateToPage('contact'); }} className={`transition ${currentPage === 'contact' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
+            <a href="/contact-us" onClick={(e) => { e.preventDefault(); navigateToPage('contact'); }} className={`transition px-1 py-1 ${currentPage === 'contact' ? 'text-blue-400 font-bold border-b-2 border-blue-500' : 'text-gray-300 hover:text-blue-400'}`}>
               تواصل معنا
             </a>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3">
             {!currentUser ? (
-              <button onClick={openAuthModal} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3.5 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition shadow-lg shadow-blue-600/30 flex items-center gap-1.5 sm:gap-2 cursor-pointer">
+              <button onClick={openAuthModal} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer">
                 <i className="fa-solid fa-right-to-bracket"></i>
                 <span>تسجيل الدخول / الحساب</span>
               </button>
             ) : (
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span className="text-[10px] sm:text-[11px] bg-blue-500/20 border border-blue-500/40 text-blue-400 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-bold uppercase">
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] bg-blue-500/20 border border-blue-500/40 text-blue-400 px-2.5 py-1 rounded-full font-bold uppercase">
                   {currentUser.plan}
                 </span>
-                <button onClick={() => navigateToPage('my-files')} className="flex items-center gap-1.5 sm:gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2 sm:px-3 py-1.5 rounded-xl transition cursor-pointer">
-                  <img className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-blue-500" src={currentUser.photoURL} alt="Avatar" />
-                  <span className="text-xs sm:text-sm font-semibold text-gray-200 max-w-[85px] sm:max-w-none truncate">{currentUser.name}</span>
+                <button onClick={() => navigateToPage('my-files')} className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded-xl transition cursor-pointer">
+                  <img className="w-7 h-7 rounded-full object-cover border border-blue-500" src={currentUser.photoURL} alt="Avatar" />
+                  <span className="text-xs sm:text-sm font-semibold text-gray-200 max-w-[100px] truncate">{currentUser.name}</span>
                 </button>
-                <button onClick={logoutUser} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-1.5 sm:p-2 rounded-xl transition border border-red-500/30 cursor-pointer" title="تسجيل الخروج">
-                  <i className="fa-solid fa-power-off text-xs sm:text-sm"></i>
+                <button onClick={logoutUser} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl transition border border-red-500/30 cursor-pointer" title="تسجيل الخروج">
+                  <i className="fa-solid fa-power-off text-sm"></i>
                 </button>
               </div>
             )}
 
-            <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden bg-gray-800/80 hover:bg-gray-700 text-gray-300 p-2 rounded-xl border border-gray-700 transition cursor-pointer flex items-center justify-center w-9 h-9 shrink-0 shadow-sm">
+            <button type="button" onClick={() => setMobileMenuOpen(true)} className="lg:hidden bg-gray-800 text-gray-300 p-2 rounded-xl border border-gray-700 transition cursor-pointer flex items-center justify-center w-9 h-9">
               <i className="fa-solid fa-bars text-base text-blue-400"></i>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Container */}
       <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-grow space-y-8">
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 relative overflow-hidden shadow-lg">
+          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 shadow-lg">
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-eye"></i>
             </div>
@@ -529,7 +490,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 relative overflow-hidden shadow-lg">
+          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 shadow-lg">
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-cloud-arrow-up"></i>
             </div>
@@ -539,7 +500,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 relative overflow-hidden shadow-lg">
+          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 shadow-lg">
             <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-users"></i>
             </div>
@@ -550,7 +511,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* Home Page */}
+        {/* Home Page Upload Section */}
         {currentPage === 'home' && (
           <div className="space-y-6">
             {!currentUser && (
@@ -584,7 +545,9 @@ export default function App() {
                   <p className="text-gray-200 font-bold text-base mb-1">
                     اسحب وأسقط الملفات هنا، أو <span className="text-blue-400 underline">اضغط لاختيار ملفاتك</span>
                   </p>
-                  <p className="text-gray-400 text-xs">يدعم الصور، المستندات، الأكواد، والفيديوهات</p>
+                  <p className="text-gray-400 text-xs">
+                    الصيغ المدعومة حالياً للسيرفر المختار: <span className="text-emerald-400 font-bold">{activeServerObj?.allowedTypes ? activeServerObj.allowedTypes.join(' - ') : 'جميع الصيغ'}</span>
+                  </p>
                 </div>
 
                 {selectedFiles.length > 0 && (
@@ -607,7 +570,7 @@ export default function App() {
                     <select value={selectedServer} onChange={(e) => setSelectedServer(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-gray-200 text-sm rounded-xl px-4 py-3 outline-none cursor-pointer">
                       {serversList.map((srv) => (
                         <option key={srv.key} value={srv.key}>
-                          {srv.name} (يدعم جميع الصيغ)
+                          {srv.name} ({srv.allowedTypes ? srv.allowedTypes.join('، ') : 'جميع الصيغ'})
                         </option>
                       ))}
                     </select>
@@ -646,7 +609,7 @@ export default function App() {
                       <div className="flex-grow w-full space-y-2">
                         <p className="font-bold text-sm text-gray-200">{item.fileName}</p>
                         <input type="text" readOnly value={item.url} className="w-full bg-gray-950 border border-gray-800 text-xs text-blue-400 p-2.5 rounded-xl outline-none" />
-                        <button onClick={() => { navigator.clipboard.writeText(item.url); alert('تم نسخ الرابط!'); }} className="bg-blue-600 hover:bg-blue-700 text-xs text-white px-4 py-2 rounded-xl transition cursor-pointer">
+                        <button onClick={() => { navigator.clipboard.writeText(item.url); alert('تم نسخ الرابط المباشر!'); }} className="bg-blue-600 hover:bg-blue-700 text-xs text-white px-4 py-2 rounded-xl transition cursor-pointer">
                           نسخ الرابط المباشر
                         </button>
                       </div>
@@ -658,7 +621,7 @@ export default function App() {
           </div>
         )}
 
-        {/* My Files Page */}
+        {/* My Files */}
         {currentPage === 'my-files' && (
           <div className="glass border border-gray-800/80 rounded-3xl p-6 space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-4">
@@ -682,7 +645,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Pricing Page */}
+        {/* Pricing */}
         {currentPage === 'pricing' && (
           <div className="space-y-6">
             <div className="text-center space-y-2 mb-8">
@@ -776,7 +739,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Auth Modal with Google Sign-In Added */}
+      {/* Auth Modal with Google Sign In */}
       {authModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-5">
@@ -784,70 +747,88 @@ export default function App() {
               <i className="fa-solid fa-xmark text-xl"></i>
             </button>
 
-            {authStep === 1 && (
-              <div className="space-y-4">
-                <div className="flex bg-gray-900 p-1 rounded-2xl border border-gray-800">
-                  <button type="button" onClick={() => setAuthMode('login')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'login' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
-                    تسجيل الدخول
-                  </button>
-                  <button type="button" onClick={() => setAuthMode('register')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'register' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
-                    إنشاء حساب جديد
-                  </button>
-                </div>
-
-                {/* Google Sign In Button */}
-                <button onClick={handleGoogleSignIn} type="button" className="w-full bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>المتابعة باستخدام Google</span>
+            <div className="space-y-4">
+              <div className="flex bg-gray-900 p-1 rounded-2xl border border-gray-800">
+                <button type="button" onClick={() => setAuthMode('login')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'login' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
+                  تسجيل الدخول
                 </button>
+                <button type="button" onClick={() => setAuthMode('register')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'register' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
+                  إنشاء حساب جديد
+                </button>
+              </div>
 
-                <div className="flex items-center gap-2 text-xs text-gray-500 my-2">
-                  <div className="flex-grow border-t border-gray-800"></div>
-                  <span>أو باستخدام البريد / الهاتف</span>
-                  <div className="flex-grow border-t border-gray-800"></div>
+              {/* Google Sign In Button */}
+              <button onClick={handleGoogleSignIn} type="button" className="w-full bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>المتابعة باستخدام Google</span>
+              </button>
+
+              <div className="flex items-center gap-2 text-xs text-gray-500 my-2">
+                <div className="flex-grow border-t border-gray-800"></div>
+                <span>أو باستخدام الحساب</span>
+                <div className="flex-grow border-t border-gray-800"></div>
+              </div>
+
+              <form onSubmit={handleUserAuth} className="space-y-3">
+                <div className="flex items-center justify-center gap-6 text-xs text-gray-300 pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={authMethod === 'email'} onChange={() => setAuthMethod('email')} className="accent-blue-600 cursor-pointer" />
+                    <span>البريد الإلكتروني</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={authMethod === 'phone'} onChange={() => setAuthMethod('phone')} className="accent-blue-600 cursor-pointer" />
+                    <span>رقم الهاتف</span>
+                  </label>
                 </div>
 
-                <form onSubmit={handleUserAuth} className="space-y-3">
-                  {authMethod === 'email' ? (
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">البريد الإلكتروني</label>
-                      <input type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="example@domain.com" />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">رقم الهاتف المحمول</label>
+                {authMethod === 'email' ? (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">البريد الإلكتروني</label>
+                    <input type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="example@domain.com" />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">اختر الدولة ورقم الهاتف</label>
+                    <div className="flex gap-2">
+                      <select value={selectedCountryDial} onChange={(e) => setSelectedCountryDial(e.target.value)} className="bg-gray-900 border border-gray-800 text-white text-xs rounded-xl px-2 outline-none cursor-pointer">
+                        {COUNTRIES_LIST.map((c) => (
+                          <option key={c.code} value={c.dial}>
+                            {c.flag} {c.dial}
+                          </option>
+                        ))}
+                      </select>
                       <input type="tel" required dir="ltr" value={authPhoneNumber} onChange={(e) => setAuthPhoneNumber(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-blue-500 outline-none text-right font-mono" placeholder="01000000000" />
                     </div>
-                  )}
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs text-gray-400">كلمة المرور</label>
-                      {authMode === 'login' && (
-                        <button type="button" onClick={openForgotPassword} className="text-xs text-blue-400 hover:underline cursor-pointer">
-                          نسيت كلمة المرور؟
-                        </button>
-                      )}
-                    </div>
-                    <input type="password" required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="••••••••" />
                   </div>
+                )}
 
-                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-600/30 cursor-pointer">
-                    {authMode === 'login' ? 'تسجيل الدخول' : 'المتابعة لإنشاء الحساب'}
-                  </button>
-                </form>
-              </div>
-            )}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs text-gray-400">كلمة المرور</label>
+                    {authMode === 'login' && (
+                      <button type="button" onClick={openForgotPassword} className="text-xs text-blue-400 hover:underline cursor-pointer">
+                        نسيت كلمة المرور؟
+                      </button>
+                    )}
+                  </div>
+                  <input type="password" required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="••••••••" />
+                </div>
+
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-600/30 cursor-pointer">
+                  {authMode === 'login' ? 'تسجيل الدخول' : 'المتابعة لإنشاء الحساب'}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Fixed Forgot Password Modal */}
+      {/* Forgot Password Modal */}
       {forgotModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-5">
@@ -864,7 +845,7 @@ export default function App() {
             </div>
 
             {!resetSentSuccess ? (
-              <form onSubmit={(e) => { e.preventDefault(); setResetSentSuccess(true); }} className="space-y-4">
+              <form onSubmit={handleSendResetPassword} className="space-y-4">
                 <div className="flex items-center justify-center gap-6 text-xs text-gray-300 pb-1">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" checked={forgotMethod === 'email'} onChange={() => setForgotMethod('email')} className="accent-blue-600 cursor-pointer" />
@@ -884,7 +865,16 @@ export default function App() {
                 ) : (
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">رقم الهاتف المسجل</label>
-                    <input type="tel" required dir="ltr" value={forgotPhone} onChange={(e) => setForgotPhone(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-blue-500 outline-none text-right font-mono" placeholder="01000000000" />
+                    <div className="flex gap-2">
+                      <select value={selectedCountryDial} onChange={(e) => setSelectedCountryDial(e.target.value)} className="bg-gray-900 border border-gray-800 text-white text-xs rounded-xl px-2 outline-none cursor-pointer">
+                        {COUNTRIES_LIST.map((c) => (
+                          <option key={c.code} value={c.dial}>
+                            {c.flag} {c.dial}
+                          </option>
+                        ))}
+                      </select>
+                      <input type="tel" required dir="ltr" value={forgotPhone} onChange={(e) => setForgotPhone(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-blue-500 outline-none text-right font-mono" placeholder="01000000000" />
+                    </div>
                   </div>
                 )}
 
@@ -896,7 +886,7 @@ export default function App() {
               <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-3">
                 <i className="fa-solid fa-paper-plane text-emerald-400 text-2xl"></i>
                 <p className="text-xs text-emerald-300 leading-relaxed">
-                  تم إرسال رابط تعيين كلمة المرور بنجاح إلى ({forgotMethod === 'email' ? forgotEmail : forgotPhone}). يرجى مراجعة رسائلك واتباع التعليمات.
+                  تم إرسال رابط تعيين كلمة المرور بنجاح. يرجى مراجعة رسائلك واتباع التعليمات.
                 </p>
                 <button onClick={() => setForgotModalOpen(false)} className="bg-gray-800 hover:bg-gray-700 text-white text-xs px-4 py-2 rounded-xl transition cursor-pointer">
                   إغلاق
@@ -907,7 +897,83 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
+      {/* Payment Gateway Modal */}
+      {paymentModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl relative space-y-6">
+            <button onClick={() => setPaymentModalOpen(false)} className="absolute top-4 left-4 text-gray-400 hover:text-white cursor-pointer">
+              <i className="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div className="text-center space-y-2">
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">بوابة الدفع الآمنة</span>
+              <h2 className="text-xl font-bold text-white">
+                تأكيد الاشتراك - خطة {selectedPlanForPayment === 'pro' ? 'الاحترافية (Pro)' : 'السيرفر الخاص (VIP)'}
+              </h2>
+              <p className="text-xs text-gray-400">
+                المبلغ المطلوب: <span className="text-emerald-400 font-bold font-mono text-sm">{selectedPlanForPayment === 'pro' ? '150' : '450'} ج.م</span>
+              </p>
+            </div>
+
+            <div className="p-4 bg-gray-900/90 border border-emerald-500/30 rounded-2xl space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+                <span className="text-gray-400">قم بتحويل المبلغ إلى رقم كاش:</span>
+                <span className="text-emerald-400 font-bold font-mono text-base" dir="ltr">{PAYMENT_NUMBER}</span>
+              </div>
+              <p className="text-gray-400">يدعم التحويل من كافة المحافظ الإلكترونية (فودافون كاش، أورنج، اتصالات، وي، فوري، المحافظ البنكية).</p>
+            </div>
+
+            <form onSubmit={handlePaymentSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-gray-400 mb-1">رقم المحفظة التي قمت بالتحويل منها *</label>
+                <input
+                  type="tel"
+                  required
+                  dir="ltr"
+                  value={senderPhone}
+                  onChange={(e) => setSenderPhone(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 text-right font-mono"
+                  placeholder="01000000000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 mb-1">رقم الواتساب للتواصل وتأكيد التفعيل *</label>
+                <input
+                  type="tel"
+                  required
+                  dir="ltr"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 text-right font-mono"
+                  placeholder="01000000000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 mb-1">صورة إيصال / لقطة شاشة التحويل (Screenshot) *</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  required
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                  className="w-full bg-gray-900 border border-gray-800 text-gray-300 rounded-xl p-2 outline-none cursor-pointer"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingPayment}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingPayment ? 'جاري إرسال الإيصال...' : 'تأكيد وإرسال التحويل'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Footer Links */}
       <footer className="bg-gray-900/90 border-t border-gray-800/80 py-6 text-xs text-gray-400 mt-auto shadow-inner">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
