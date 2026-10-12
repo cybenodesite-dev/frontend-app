@@ -91,12 +91,20 @@ const COUNTRIES_LIST: CountryDial[] = [
   { code: 'CA', name: 'كندا', dial: '+1', flag: '🇨🇦' },
 ];
 
-type PageType = 'home' | 'my-files' | 'pricing' | 'sdk' | 'privacy' | 'terms' | 'about' | 'contact';
+type PageType = 'home' | 'my-files' | 'pricing' | 'privacy' | 'terms' | 'about' | 'contact';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [currentPage, setCurrentPage] = useState<PageType>(() => {
+    const path = window.location.pathname;
+    if (path === '/privacy-policy') return 'privacy';
+    if (path === '/terms-of-service') return 'terms';
+    if (path === '/about-us') return 'about';
+    if (path === '/contact-us') return 'contact';
+    if (path === '/pricing') return 'pricing';
+    if (path === '/my-files') return 'my-files';
+    return 'home';
+  });
 
-  // User session
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
     try {
       const saved = localStorage.getItem('cn_user_session');
@@ -106,14 +114,12 @@ export default function App() {
     }
   });
 
-  // Dynamic state loaded from Realtime Database
   const [serversList, setServersList] = useState<ServerOption[]>([]);
   const [cloudFiles, setCloudFiles] = useState<UploadedFileItem[]>([]);
   const [visitsCount, setVisitsCount] = useState<number>(0);
   const [subscribersCount, setSubscribersCount] = useState<number>(0);
   const [totalFilesCount, setTotalFilesCount] = useState<number>(0);
 
-  // Selected files & upload states
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedServer, setSelectedServer] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
@@ -122,10 +128,8 @@ export default function App() {
   const [uploadResults, setUploadResults] = useState<UploadedFileItem[]>([]);
   const [qrCodesMap, setQrCodesMap] = useState<{ [id: string]: string }>({});
 
-  // Mobile menu drawer
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Payment Modal States
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<'pro' | 'vip'>('pro');
   const [senderPhone, setSenderPhone] = useState('');
@@ -133,7 +137,6 @@ export default function App() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
-  // Auth & Forgot password modal states
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
   const [forgotEmail, setForgotEmail] = useState('');
@@ -144,17 +147,52 @@ export default function App() {
   const [authStep, setAuthStep] = useState<1 | 2 | 3>(1);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
-  const [selectedCountryDial, setSelectedCountryDial] = useState('+20');
+  const [selectedCountryDial] = useState('+20');
   const [authEmail, setAuthEmail] = useState('');
-  const [authPhone, setAuthPhone] = useState('');
+  const [authPhone] = useState('');
   const [authPhoneNumber, setAuthPhoneNumber] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [surveyName, setSurveyName] = useState('');
-  const [surveyCountry, setSurveyCountry] = useState('مصر');
+  const [surveyCountry] = useState('مصر');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync data from Firebase RTDB on initial load
+  // Sync URLs for Google AdSense SEO Link Routing
+  const navigateToPage = (pageName: PageType) => {
+    if ((pageName === 'my-files') && !currentUser) {
+      openAuthModal();
+      return;
+    }
+
+    let path = '/';
+    if (pageName === 'privacy') path = '/privacy-policy';
+    else if (pageName === 'terms') path = '/terms-of-service';
+    else if (pageName === 'about') path = '/about-us';
+    else if (pageName === 'contact') path = '/contact-us';
+    else if (pageName === 'pricing') path = '/pricing';
+    else if (pageName === 'my-files') path = '/my-files';
+
+    window.history.pushState({}, '', path);
+    setCurrentPage(pageName);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/privacy-policy') setCurrentPage('privacy');
+      else if (path === '/terms-of-service') setCurrentPage('terms');
+      else if (path === '/about-us') setCurrentPage('about');
+      else if (path === '/contact-us') setCurrentPage('contact');
+      else if (path === '/pricing') setCurrentPage('pricing');
+      else if (path === '/my-files') setCurrentPage('my-files');
+      else setCurrentPage('home');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     const fetchDatabaseData = async () => {
       try {
@@ -162,7 +200,6 @@ export default function App() {
         const dbData = await res.json();
 
         if (dbData) {
-          // Parse Servers
           if (dbData.servers) {
             const parsedServers: ServerOption[] = Object.entries(dbData.servers).map(([key, srv]: [string, any]) => ({
               key,
@@ -170,13 +207,13 @@ export default function App() {
               endpoint: srv.endpoint || '',
               active: srv.active ?? true,
             }));
-            setServersList(parsedServers.filter((s) => s.active));
-            if (parsedServers.length > 0) {
-              setSelectedServer(parsedServers[0].key);
+            const activeOnly = parsedServers.filter((s) => s.active);
+            setServersList(activeOnly);
+            if (activeOnly.length > 0) {
+              setSelectedServer(activeOnly[0].key);
             }
           }
 
-          // Parse Uploads Count & Items
           if (dbData.uploads) {
             const uploadEntries = Object.entries(dbData.uploads);
             setTotalFilesCount(uploadEntries.length);
@@ -193,17 +230,14 @@ export default function App() {
             setCloudFiles(parsedUploads.reverse());
           }
 
-          // Parse Users Count
           if (dbData.users) {
             setSubscribersCount(Object.keys(dbData.users).length);
           }
 
-          // Parse Visits Count & Increment
           const currentVisits = dbData.stats?.visits || 1422;
           const newVisits = currentVisits + 1;
           setVisitsCount(newVisits);
 
-          // Update visit count in Firebase
           fetch(`${FIREBASE_DB_URL}/stats/visits.json`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -218,7 +252,6 @@ export default function App() {
     fetchDatabaseData();
   }, []);
 
-  // Save user session
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('cn_user_session', JSON.stringify(currentUser));
@@ -226,15 +259,6 @@ export default function App() {
       localStorage.removeItem('cn_user_session');
     }
   }, [currentUser]);
-
-  const switchMainPage = (pageName: PageType) => {
-    if ((pageName === 'my-files' || pageName === 'sdk') && !currentUser) {
-      openAuthModal();
-      return;
-    }
-    setCurrentPage(pageName);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   const openAuthModal = () => {
     setAuthStep(1);
@@ -248,7 +272,7 @@ export default function App() {
 
   const logoutUser = () => {
     setCurrentUser(null);
-    setCurrentPage('home');
+    navigateToPage('home');
     setMobileMenuOpen(false);
   };
 
@@ -420,37 +444,37 @@ export default function App() {
   const userFiles = currentUser ? cloudFiles.filter((f) => f.userId === currentUser.uid) : [];
 
   return (
-    <div className="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-600">
+    <div className="bg-[#070a12] text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-600">
       {/* Header Navigation Bar */}
-      <header className="bg-gray-900/90 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3 space-x-reverse cursor-pointer" onClick={() => switchMainPage('home')}>
+      <header className="bg-gray-900/90 backdrop-blur-md border-b border-gray-800/80 sticky top-0 z-40 shadow-xl">
+        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
+          <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); }} className="flex items-center space-x-3 space-x-reverse cursor-pointer">
             <img src={LOGO_URL} alt="CN Files Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-blue-500/20 border border-blue-500/30" />
             <span className="text-xl font-extrabold tracking-wide text-white">
               CN Files <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full mr-2">v3.0</span>
             </span>
-          </div>
+          </a>
 
-          {/* Desktop Navigation Links */}
+          {/* AdSense Valid Anchors Nav Links */}
           <nav className="hidden md:flex items-center space-x-6 space-x-reverse text-sm font-semibold">
-            <button onClick={() => switchMainPage('home')} className={`transition cursor-pointer ${currentPage === 'home' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
+            <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); }} className={`transition ${currentPage === 'home' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
               الرئيسية
-            </button>
-            <button onClick={() => switchMainPage('my-files')} className={`transition cursor-pointer ${currentPage === 'my-files' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
+            </a>
+            <a href="/my-files" onClick={(e) => { e.preventDefault(); navigateToPage('my-files'); }} className={`transition ${currentPage === 'my-files' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
               ملفاتي السحابية
-            </button>
-            <button onClick={() => switchMainPage('pricing')} className={`transition cursor-pointer ${currentPage === 'pricing' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
+            </a>
+            <a href="/pricing" onClick={(e) => { e.preventDefault(); navigateToPage('pricing'); }} className={`transition ${currentPage === 'pricing' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
               الخطط والاشتراكات
-            </button>
-            <button onClick={() => switchMainPage('about')} className={`transition cursor-pointer ${currentPage === 'about' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
+            </a>
+            <a href="/about-us" onClick={(e) => { e.preventDefault(); navigateToPage('about'); }} className={`transition ${currentPage === 'about' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
               من نحن
-            </button>
-            <button onClick={() => switchMainPage('contact')} className={`transition cursor-pointer ${currentPage === 'contact' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
+            </a>
+            <a href="/contact-us" onClick={(e) => { e.preventDefault(); navigateToPage('contact'); }} className={`transition ${currentPage === 'contact' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
               تواصل معنا
-            </button>
+            </a>
           </nav>
 
-          {/* Header Actions & Mobile Toggle */}
+          {/* User Status / Auth CTA */}
           <div className="flex items-center gap-2 sm:gap-3">
             {!currentUser ? (
               <button onClick={openAuthModal} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3.5 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition shadow-lg shadow-blue-600/30 flex items-center gap-1.5 sm:gap-2 cursor-pointer">
@@ -462,7 +486,7 @@ export default function App() {
                 <span className="text-[10px] sm:text-[11px] bg-blue-500/20 border border-blue-500/40 text-blue-400 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-bold uppercase">
                   {currentUser.plan}
                 </span>
-                <button onClick={() => switchMainPage('my-files')} className="flex items-center gap-1.5 sm:gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2 sm:px-3 py-1.5 rounded-xl transition cursor-pointer">
+                <button onClick={() => navigateToPage('my-files')} className="flex items-center gap-1.5 sm:gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2 sm:px-3 py-1.5 rounded-xl transition cursor-pointer">
                   <img className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-blue-500" src={currentUser.photoURL} alt="Avatar" />
                   <span className="text-xs sm:text-sm font-semibold text-gray-200 max-w-[85px] sm:max-w-none truncate">{currentUser.name}</span>
                 </button>
@@ -473,7 +497,7 @@ export default function App() {
             )}
 
             {/* Mobile Sidebar Hamburger Toggle */}
-            <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden bg-gray-800 hover:bg-gray-700 text-gray-300 p-2 rounded-xl border border-gray-700 transition cursor-pointer flex items-center justify-center w-9 h-9 shrink-0 shadow-sm">
+            <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden bg-gray-800/80 hover:bg-gray-700 text-gray-300 p-2 rounded-xl border border-gray-700 transition cursor-pointer flex items-center justify-center w-9 h-9 shrink-0 shadow-sm">
               <i className="fa-solid fa-bars text-base text-blue-400"></i>
             </button>
           </div>
@@ -482,9 +506,9 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-grow space-y-8">
-        {/* Real Dynamic Banner Statistics */}
+        {/* Dynamic Statistics Cards */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800 relative overflow-hidden">
+          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 relative overflow-hidden shadow-lg">
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-eye"></i>
             </div>
@@ -494,7 +518,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800 relative overflow-hidden">
+          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 relative overflow-hidden shadow-lg">
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-cloud-arrow-up"></i>
             </div>
@@ -504,7 +528,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800 relative overflow-hidden">
+          <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 relative overflow-hidden shadow-lg">
             <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-users"></i>
             </div>
@@ -519,7 +543,7 @@ export default function App() {
         {currentPage === 'home' && (
           <div className="space-y-6">
             {!currentUser && (
-              <div className="glass border border-gray-800 rounded-3xl p-8 md:p-12 text-center space-y-6 shadow-2xl relative overflow-hidden">
+              <div className="glass border border-gray-800/80 rounded-3xl p-8 md:p-12 text-center space-y-6 shadow-2xl relative overflow-hidden">
                 <div className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-4xl mx-auto">
                   <i className="fa-solid fa-lock"></i>
                 </div>
@@ -535,13 +559,13 @@ export default function App() {
             )}
 
             {currentUser && (
-              <div className="glass border border-gray-800 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-hidden">
+              <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-hidden">
                 <div className="text-center space-y-2 mb-8">
                   <h1 className="text-3xl md:text-4xl font-black text-white tracking-wide">رفع الملفات والصور السحابية</h1>
                   <p className="text-gray-400 text-sm max-w-md mx-auto">ارفع ملفاتك بسرعة فائقة وبأمان تام عبر خوادمنا الموزعة عالمياً</p>
                 </div>
 
-                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-700 hover:border-blue-500 rounded-3xl p-8 text-center bg-gray-900/50 cursor-pointer transition flex flex-col items-center justify-center min-h-[220px]">
+                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-700/80 hover:border-blue-500 rounded-3xl p-8 text-center bg-gray-900/50 cursor-pointer transition flex flex-col items-center justify-center min-h-[220px]">
                   <input type="file" ref={fileInputRef} className="hidden" multiple onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} />
                   <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-3xl mb-4">
                     <i className="fa-solid fa-cloud-arrow-up"></i>
@@ -572,7 +596,7 @@ export default function App() {
                     <select value={selectedServer} onChange={(e) => setSelectedServer(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-gray-200 text-sm rounded-xl px-4 py-3 outline-none cursor-pointer">
                       {serversList.map((srv) => (
                         <option key={srv.key} value={srv.key}>
-                          {srv.name} ({srv.endpoint})
+                          {srv.name} (يدعم جميع الصيغ)
                         </option>
                       ))}
                     </select>
@@ -625,7 +649,7 @@ export default function App() {
 
         {/* PAGE 2: User Cloud Files */}
         {currentPage === 'my-files' && (
-          <div className="glass border border-gray-800 rounded-3xl p-6 space-y-6">
+          <div className="glass border border-gray-800/80 rounded-3xl p-6 space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-4">
               <i className="fa-solid fa-folder-open text-blue-500"></i> ملفاتي المرفوعة ({userFiles.length})
             </h2>
@@ -703,25 +727,36 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 4: Privacy & Security */}
+        {/* PAGE 4: Privacy Policy (Google AdSense Compliant URL: /privacy-policy) */}
         {currentPage === 'privacy' && (
-          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed">
-            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4">سياسة الخصوصية والأمان</h2>
-            <p>نحن في <strong>CN Files</strong> نلتزم بأعلى معايير حماية البيانات والخصوصية الرقمية. تتضمن سياستنا البنود التالية:</p>
-            <ul className="list-disc list-inside space-y-2">
-              <li><strong>تشفير البيانات:</strong> يتم تشفير جميع ملفاتك أثناء النقل والتخزين بأعلى بروتوكولات الأمان SSL/TLS.</li>
-              <li><strong>سرية المعلومات:</strong> لا نقوم ببيع أو مشاركة بياناتك الشخصية أو ملفاتك مع أي أطراف خارجية إطلاقاً.</li>
-              <li><strong>التحكم الكامل:</strong> يحق لك حذف ملفاتك أو حسابك نهائياً في أي وقت من خلال خيارات التحكم بالمنصة.</li>
-            </ul>
+          <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed shadow-xl">
+            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
+              <i className="fa-solid fa-user-shield text-blue-500"></i> سياسة الخصوصية والأمان (Privacy Policy)
+            </h2>
+            <p>
+              نحن في <strong>CN Files</strong> نلتزم بأعلى معايير حماية البيانات والخصوصية الرقمية لجميع زوارنا ومستخدمينا. تصف هذه السياسة كيفية جمع واستخدام وتأمين بياناتك.
+            </p>
+            <div className="space-y-4 pt-2">
+              <h3 className="text-white font-bold text-base">1. جمع البيانات والمعلومات:</h3>
+              <p>نجمع البيانات التي تزودنا بها مباشرة عند إنشاء الحساب مثل البريد الإلكتروني ورقم الهاتف لضمان جودة الخدمة والتواصل.</p>
+              
+              <h3 className="text-white font-bold text-base">2. ملفات تعريف الارتباط (Cookies):</h3>
+              <p>قد نستخدم ملفات الكوكيز لتحسين تجربة التصفح وحفظ إعدادات الجلسة وتسهيل استخدام المنصة.</p>
+
+              <h3 className="text-white font-bold text-base">3. إعلانات Google AdSense والشركاء:</h3>
+              <p>قد يتم استخدام ملفات كوكيز لشركاء الإعلانات (مثل Google) لتزويدك بإعلانات ملاءمة بناءً على زياراتك السابقة لموقعنا أو مواقع أخرى.</p>
+            </div>
           </div>
         )}
 
-        {/* PAGE 5: Terms of Use */}
+        {/* PAGE 5: Terms of Service (Google AdSense Compliant URL: /terms-of-service) */}
         {currentPage === 'terms' && (
-          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed">
-            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4">شروط الاستخدام</h2>
-            <p>باستخدامك لمنصة CN Files، فإنك توافق على الشروط والضوابط التالية:</p>
-            <ul className="list-disc list-inside space-y-2">
+          <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed shadow-xl">
+            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
+              <i className="fa-solid fa-file-contract text-blue-500"></i> شروط الاستخدام (Terms of Service)
+            </h2>
+            <p>باستخدامك لمنصة CN Files، فإنك توافق التامة على الشروط والضوابط الموضحة أدناه:</p>
+            <ul className="list-disc list-inside space-y-3 pt-2">
               <li>يُمنع منعاً باتاً رفع أو مشاركة أي محتوى يرتكب مخالفات قانونية أو ينتهك حقوق الملكية الفكرية.</li>
               <li>المستخدم مسؤول مسؤولية كاملة عن سلامة وصحة الملفات والمحتوى الذي يقوم بنشره عبر حسابه.</li>
               <li>نحتفظ بحق تعليق الحسابات التي تتجاوز الاستخدام العادل أو تسبب ضرراً لأداء سيرفرات المنصة.</li>
@@ -729,10 +764,12 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 6: About Us */}
+        {/* PAGE 6: About Us (Google AdSense Compliant URL: /about-us) */}
         {currentPage === 'about' && (
-          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed">
-            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4">من نحن</h2>
+          <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed shadow-xl">
+            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
+              <i className="fa-solid fa-circle-info text-blue-500"></i> من نحن (About Us)
+            </h2>
             <p>
               <strong>CN Files</strong> هي منصة سحابية متطورة تابعة لشبكة <strong>CybeNode</strong>، تم تطويرها لتوفير حلول سريعة وآمنة لرفع، حفظ، ومشاركة الصور والملفات عبر الإنترنت.
             </p>
@@ -742,11 +779,13 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 7: Contact Us */}
+        {/* PAGE 7: Contact Us (Google AdSense Compliant URL: /contact-us) */}
         {currentPage === 'contact' && (
-          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-6">
-            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4">تواصل معنا</h2>
-            <p className="text-sm text-gray-300">فريق الدعم الفني متواجد لمساعدتك والإجابة على الاستفسارات طوال الأسبوع.</p>
+          <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 shadow-xl">
+            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
+              <i className="fa-solid fa-envelope text-blue-500"></i> تواصل معنا (Contact Us)
+            </h2>
+            <p className="text-sm text-gray-300">فريق الدعم الفني متواجد لمساعدتك والإجابة على كافة الاستفسارات طوال الأسبوع.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               <div className="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex items-center gap-4">
@@ -1033,10 +1072,10 @@ export default function App() {
           <div className="relative w-4/5 max-w-xs bg-gray-950 border-r border-gray-800 h-full p-5 flex flex-col justify-between shadow-2xl z-10 overflow-y-auto space-y-6">
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-gray-800">
-                <div className="flex items-center space-x-2.5 space-x-reverse cursor-pointer" onClick={() => { switchMainPage('home'); setMobileMenuOpen(false); }}>
+                <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); setMobileMenuOpen(false); }} className="flex items-center space-x-2.5 space-x-reverse cursor-pointer">
                   <img src={LOGO_URL} alt="CN Files Logo" className="w-8 h-8 rounded-xl object-cover border border-blue-500/30" />
                   <span className="font-black text-white text-base">CN Files</span>
-                </div>
+                </a>
                 <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white border border-gray-800">
                   <i className="fa-solid fa-xmark text-lg"></i>
                 </button>
@@ -1055,26 +1094,26 @@ export default function App() {
               )}
 
               <nav className="space-y-2 text-sm font-bold">
-                <button onClick={() => { switchMainPage('home'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'home' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'home' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
                   <span>الرئيسية</span>
                   <i className="fa-solid fa-house"></i>
-                </button>
-                <button onClick={() => { switchMainPage('my-files'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'my-files' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                </a>
+                <a href="/my-files" onClick={(e) => { e.preventDefault(); navigateToPage('my-files'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'my-files' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
                   <span>ملفاتي السحابية</span>
                   <i className="fa-solid fa-folder-open"></i>
-                </button>
-                <button onClick={() => { switchMainPage('pricing'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'pricing' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                </a>
+                <a href="/pricing" onClick={(e) => { e.preventDefault(); navigateToPage('pricing'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'pricing' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
                   <span>الخطط والاشتراكات</span>
                   <i className="fa-solid fa-gem"></i>
-                </button>
-                <button onClick={() => { switchMainPage('about'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'about' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                </a>
+                <a href="/about-us" onClick={(e) => { e.preventDefault(); navigateToPage('about'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'about' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
                   <span>من نحن</span>
                   <i className="fa-solid fa-circle-info"></i>
-                </button>
-                <button onClick={() => { switchMainPage('contact'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'contact' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                </a>
+                <a href="/contact-us" onClick={(e) => { e.preventDefault(); navigateToPage('contact'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'contact' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
                   <span>تواصل معنا</span>
                   <i className="fa-solid fa-envelope"></i>
-                </button>
+                </a>
               </nav>
             </div>
 
@@ -1085,8 +1124,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-gray-900/90 border-t border-gray-800 py-6 text-xs text-gray-400 mt-auto">
+      {/* Footer with Google AdSense Compliant Footer Links */}
+      <footer className="bg-gray-900/90 border-t border-gray-800/80 py-6 text-xs text-gray-400 mt-auto shadow-inner">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <img src={LOGO_URL} alt="CN Files Logo" className="w-7 h-7 rounded-lg object-cover border border-blue-500/30" />
@@ -1097,9 +1136,10 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4 text-xs">
-            <button onClick={() => switchMainPage('privacy')} className="hover:text-blue-400 transition">سياسة الخصوصية</button>
-            <button onClick={() => switchMainPage('terms')} className="hover:text-blue-400 transition">شروط الاستخدام</button>
-            <button onClick={() => switchMainPage('contact')} className="hover:text-blue-400 transition">تواصل معنا</button>
+            <a href="/privacy-policy" onClick={(e) => { e.preventDefault(); navigateToPage('privacy'); }} className="hover:text-blue-400 transition">سياسة الخصوصية</a>
+            <a href="/terms-of-service" onClick={(e) => { e.preventDefault(); navigateToPage('terms'); }} className="hover:text-blue-400 transition">شروط الاستخدام</a>
+            <a href="/about-us" onClick={(e) => { e.preventDefault(); navigateToPage('about'); }} className="hover:text-blue-400 transition">من نحن</a>
+            <a href="/contact-us" onClick={(e) => { e.preventDefault(); navigateToPage('contact'); }} className="hover:text-blue-400 transition">تواصل معنا</a>
           </div>
 
           <div>
