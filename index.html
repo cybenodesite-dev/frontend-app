@@ -28,6 +28,7 @@
                 <button onclick="switchMainPage('home')" class="hover:text-blue-400 transition">الرئيسية</button>
                 <button onclick="switchMainPage('my-files')" class="hover:text-blue-400 transition">ملفاتي السحابية</button>
                 <button onclick="switchMainPage('pricing')" class="hover:text-blue-400 transition">الخطط والاشتراكات</button>
+                <button onclick="switchMainPage('about')" class="hover:text-blue-400 transition">من نحن والأمان</button>
                 <button id="navSdkBtn" onclick="switchMainPage('sdk')" class="hidden text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5"><i class="fa-solid fa-server text-xs"></i> SDK السيرفر الخاص</button>
             </nav>
 
@@ -55,7 +56,7 @@
     <!-- Main Container Pages -->
     <main class="max-w-6xl mx-auto w-full px-4 py-8 flex-grow space-y-8">
 
-        <!-- Banner Counter Statistics -->
+        <!-- Banner Real Analytics Counters -->
         <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div class="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800">
                 <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl">
@@ -63,7 +64,7 @@
                 </div>
                 <div>
                     <p class="text-xs text-gray-400 font-semibold">إجمالي الزيارات</p>
-                    <h4 id="liveVisitsCount" class="text-2xl font-black text-white">1,420</h4>
+                    <h4 id="liveVisitsCount" class="text-2xl font-black text-white">0</h4>
                 </div>
             </div>
             <div class="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800">
@@ -71,8 +72,8 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-400 font-semibold">الملفات المرفوعة</p>
-                    <h4 id="liveFilesCount" class="text-2xl font-black text-white">0</h4>
+                    <p class="text-xs text-gray-400 font-semibold">الملفات المرفوعة الحقيقية</p>
+                    <h4 id="liveFilesCount" class="text-2xl font-black text-white">1</h4>
                 </div>
             </div>
             <div class="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800">
@@ -80,8 +81,8 @@
                     <i class="fa-solid fa-users"></i>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-400 font-semibold">المشتركين بالمنصة</p>
-                    <h4 id="liveUsersCount" class="text-2xl font-black text-white">380</h4>
+                    <p class="text-xs text-gray-400 font-semibold">المشتركين المسجلين</p>
+                    <h4 id="liveUsersCount" class="text-2xl font-black text-white">1</h4>
                 </div>
             </div>
         </section>
@@ -89,7 +90,7 @@
         <!-- PAGE 1: Upload Main View -->
         <div id="pageHome" class="main-page space-y-6">
             
-            <!-- Mandatory Login Gate Notice (تظهر فقط للزائرين غير المسجلين) -->
+            <!-- Mandatory Login Gate Notice -->
             <div id="loginRequiredGate" class="glass border border-gray-800 rounded-3xl p-8 md:p-12 text-center space-y-6 shadow-2xl relative overflow-hidden">
                 <div class="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-4xl mx-auto">
                     <i class="fa-solid fa-lock"></i>
@@ -104,7 +105,7 @@
                 </button>
             </div>
 
-            <!-- Upload Box (مخفية كلياً حتى يسجل المستخدم) -->
+            <!-- Upload Box (مخفي حتى تسجيل الدخول) -->
             <div id="uploadBoxSection" class="hidden glass border border-gray-800 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-hidden">
                 <div class="absolute -top-24 -left-24 w-60 h-60 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -163,7 +164,7 @@
             </div>
         </div>
 
-        <!-- PAGE 2: User Cloud Files (My Files) -->
+        <!-- PAGE 2: User Cloud Files -->
         <div id="pageMyFiles" class="main-page hidden space-y-6">
             <div class="glass border border-gray-800 rounded-3xl p-6 md:p-8 space-y-6">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-4">
@@ -191,21 +192,20 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Free Plan -->
-                <div class="glass border border-gray-800 rounded-3xl p-6 flex flex-col justify-between space-y-6 hover:border-gray-700 transition">
+                <div class="glass border border-gray-800 rounded-3xl p-6 flex flex-col justify-between space-y-6">
                     <div class="space-y-4">
                         <span class="text-xs bg-gray-800 text-gray-300 px-3 py-1 rounded-full font-bold">الخطة المجانية</span>
                         <h3 class="text-3xl font-black text-white">0 <span class="text-xs font-normal text-gray-400">ج.م / شهرياً</span></h3>
                         <ul class="space-y-3 text-xs text-gray-300">
                             <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> رفع صور ومستندات محدودة</li>
                             <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> خوادم سحابية عامة</li>
-                            <li class="flex items-center gap-2 text-gray-500"><i class="fa-solid fa-xmark"></i> بدون سيرفر خاص</li>
                         </ul>
                     </div>
-                    <button onclick="selectPlan('free')" class="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl text-sm transition">الخطة الحالية</button>
+                    <button onclick="selectPlan('free')" class="w-full bg-gray-800 text-white font-bold py-3 rounded-xl text-sm">الخطة الحالية</button>
                 </div>
 
                 <!-- Pro Plan -->
-                <div class="glass border border-blue-500/40 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative hover:border-blue-500 transition">
+                <div class="glass border border-blue-500/40 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative">
                     <span class="absolute -top-3 right-6 text-[10px] bg-blue-600 text-white font-bold px-3 py-1 rounded-full">الأكثر شعبية</span>
                     <div class="space-y-4">
                         <span class="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full font-bold">الخطة الاحترافية (Pro)</span>
@@ -213,30 +213,64 @@
                         <ul class="space-y-3 text-xs text-gray-300">
                             <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> رفع جميع الصيغ بلا حدود</li>
                             <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> خوادم سريعة فائقة السرعة</li>
-                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> دعم فني مخصص</li>
                         </ul>
                     </div>
-                    <button onclick="selectPlan('pro')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg shadow-blue-600/30">الترقية للـ Pro</button>
+                    <button onclick="openPaymentGateway('pro', 150)" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm transition">الترقية والدفع الآن</button>
                 </div>
 
-                <!-- VIP Dedicated Server Plan -->
-                <div class="glass border border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative hover:border-amber-500 transition glow">
+                <!-- VIP Plan -->
+                <div class="glass border border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative">
                     <span class="absolute -top-3 right-6 text-[10px] bg-amber-500 text-gray-950 font-black px-3 py-1 rounded-full">السيرفر الخاص VIP</span>
                     <div class="space-y-4">
                         <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full font-bold">خطة السيرفر المدار</span>
                         <h3 class="text-3xl font-black text-white">450 <span class="text-xs font-normal text-gray-400">ج.م / شهرياً</span></h3>
                         <ul class="space-y-3 text-xs text-gray-300">
-                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> جميع مميزات خطة Pro</li>
-                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> سيرفر Cloudflare Worker خاص بك</li>
-                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> الحصول على SDK لوحة تحكم مخصصة</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> سيرفر Cloudflare الخاص بك</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> الحصول على حزمة الـ SDK</li>
                         </ul>
                     </div>
-                    <button onclick="selectPlan('vip')" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-gray-950 font-black py-3 rounded-xl text-sm transition shadow-lg shadow-amber-500/20">طلب السيرفر الخاص والـ SDK</button>
+                    <button onclick="openPaymentGateway('vip', 450)" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-gray-950 font-black py-3 rounded-xl text-sm transition">طلب السيرفر المدار والدفع</button>
                 </div>
             </div>
         </div>
 
-        <!-- PAGE 4: VIP Dedicated Server SDK Page -->
+        <!-- PAGE 4: About, Security & Terms Page -->
+        <div id="pageAbout" class="main-page hidden space-y-6">
+            <div class="glass border border-gray-800 rounded-3xl p-6 md:p-10 space-y-8">
+                <div>
+                    <h2 class="text-2xl font-black text-white mb-2">من نحن وكيف نحمي ملفاتك؟</h2>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        منصة <span class="text-blue-400 font-bold">CN-Img</span> هي منصة تخزين وتوجيه سحابية موزعة تعتمد على تقنيات Edge Computing والتشفير السحابي المباشر. يهدف نظامنا لتسهيل رفع وصيانة الملفات بأقصى درجات الأمان والخصوصية دون الإطلاع عليها.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-800">
+                    <div class="space-y-2">
+                        <h3 class="text-md font-bold text-blue-400"><i class="fa-solid fa-shield-halved ml-2"></i>سياسة الخصوصية والأمان</h3>
+                        <p class="text-xs text-gray-400 leading-relaxed">
+                            جميع الملفات يتم تشفيرها أثناء النقل مع بروتوكولات SSL/TLS 1.3. نحن لا نشارك بيانات المستخدمين مع أي أطراف ثالثة ونلتزم بحفظ سرية السجلات بأساليب متطورة.
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h3 class="text-md font-bold text-blue-400"><i class="fa-solid fa-file-contract ml-2"></i>شروط الاستخدام</h3>
+                        <p class="text-xs text-gray-400 leading-relaxed">
+                            يُمنع منعاً باتاً رفع المواد الضارة، أو الفيروسات، أو المحتوى المخالف للقوانين الدولية. أي انتهاك يؤدي لحظر الحساب وعنوان IP فوراً.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h4 class="font-bold text-sm text-white">تواصل معنا للدعم والخدمات</h4>
+                        <p class="text-xs text-blue-400 mt-0.5">info@cybenode.site</p>
+                    </div>
+                    <a href="mailto:info@cybenode.site" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition">إرسال رسالة بريدية</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 5: SDK Dedicated Server Page -->
         <div id="pageSdk" class="main-page hidden space-y-6">
             <div class="glass border border-amber-500/40 rounded-3xl p-6 md:p-8 space-y-6">
                 <div class="border-b border-gray-800 pb-4 flex justify-between items-center">
@@ -253,7 +287,7 @@
                     <p class="text-sm text-gray-300 leading-relaxed">
                         بصفتك مشترك في الخطة المتقدمة (VIP)، يحق لك طلب سيرفر Cloudflare Worker مدار بالكامل ومربوط بـ Blob Storage خاص بك لحفظ ملفاتك بأقصى حماية وسرعة.
                     </p>
-                    <button onclick="submitSdkRequest()" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black px-6 py-3 rounded-xl text-sm transition shadow-lg shadow-amber-500/20">
+                    <button onclick="submitSdkRequest()" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black px-6 py-3 rounded-xl text-sm transition">
                         التقديم للحصول على السيرفر الخاص الآن
                     </button>
                 </div>
@@ -280,11 +314,16 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 border-t border-gray-800 py-4 text-center text-xs text-gray-500">
-        جميع الحقوق محفوظة &copy; 2026 - منصة CN-Img Distributed Infrastructure
+    <footer class="bg-gray-900 border-t border-gray-800 py-6 text-center text-xs text-gray-500 space-y-2">
+        <div class="flex justify-center gap-4 text-gray-400">
+            <button onclick="switchMainPage('about')" class="hover:text-white">من نحن</button> • 
+            <button onclick="switchMainPage('about')" class="hover:text-white">سياسة الخصوصية</button> • 
+            <button onclick="switchMainPage('about')" class="hover:text-white">شروط الاستخدام</button>
+        </div>
+        <p>جميع الحقوق محفوظة &copy; 2026 - منصة CN-Img | البريد الرسمي: info@cybenode.site</p>
     </footer>
 
-    <!-- Auth Modal & Mandatory Profile Survey Stepper -->
+    <!-- Auth Modal with Forgot Password -->
     <div id="authModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-6">
             <button onclick="closeAuthModal()" class="absolute top-4 left-4 text-gray-400 hover:text-white">
@@ -312,48 +351,66 @@
                         <input type="email" id="authEmail" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="example@domain.com">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">كلمة المرور</label>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs text-gray-400">كلمة المرور</label>
+                            <button type="button" onclick="showForgotPasswordView()" class="text-xs text-blue-400 hover:underline">نسيت كلمة المرور؟</button>
+                        </div>
                         <input type="password" id="authPassword" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="••••••••">
                     </div>
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-600/30">دخول / تسجيل</button>
                 </form>
             </div>
 
-            <!-- STEP 2: Mandatory Primary Data Survey -->
+            <!-- Forgot Password View -->
+            <div id="forgotPasswordStep" class="hidden space-y-4">
+                <div class="text-center">
+                    <h2 class="text-lg font-bold text-white">استعادة كلمة المرور</h2>
+                    <p class="text-xs text-gray-400 mt-1">أدخل بريدك الإلكتروني وسيتم إرسال رابط إعادة الضبط إليه فوراً</p>
+                </div>
+                <form onsubmit="handleForgotPassword(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">البريد الإلكتروني المسجل</label>
+                        <input type="email" id="resetEmail" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="example@domain.com">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition">إرسال رابط الاستعادة</button>
+                    <button type="button" onclick="hideForgotPasswordView()" class="w-full bg-gray-800 text-gray-300 py-2.5 rounded-xl text-xs font-semibold">الرجوع لتسجيل الدخول</button>
+                </form>
+            </div>
+
+            <!-- STEP 2: Survey -->
             <div id="authStep2" class="hidden space-y-4">
                 <div class="text-center">
                     <span class="text-xs text-blue-400 font-bold">الخطوة 1 من 2</span>
                     <h2 class="text-lg font-bold text-white mt-1">استكمال البيانات الأساسية</h2>
-                    <p class="text-xs text-gray-400">يرجى إدخال بياناتك لاستكمال إنشاء الحساب</p>
                 </div>
 
                 <form id="profileSurveyForm" onsubmit="submitProfileSurvey(event)" class="space-y-3">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">الاسم بالكامل *</label>
-                        <input type="text" id="surveyName" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        <input type="text" id="surveyName" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">النوع *</label>
-                            <select id="surveyGender" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                            <select id="surveyGender" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
                                 <option value="male">ذكر</option>
                                 <option value="female">أنثى</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">البلد *</label>
-                            <input type="text" id="surveyCountry" required placeholder="مصر" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="surveyCountry" required placeholder="مصر" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">رقم الهاتف (اختياري)</label>
-                        <input type="tel" id="surveyPhone" placeholder="+201000000000" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        <input type="tel" id="surveyPhone" placeholder="+201029583799" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
                     </div>
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition">المتابعة لاختيار الخطة</button>
                 </form>
             </div>
 
-            <!-- STEP 3: Mandatory Plan Selection -->
+            <!-- STEP 3: Plan Selection -->
             <div id="authStep3" class="hidden space-y-4">
                 <div class="text-center">
                     <span class="text-xs text-amber-400 font-bold">الخطوة 2 من 2</span>
@@ -387,6 +444,60 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Payment Gateway Modal (فودافون كاش اليدوي) -->
+    <div id="paymentModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-6">
+            <button onclick="closePaymentModal()" class="absolute top-4 left-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">بوابة التحويل اليدوي (فودافون كاش)</h3>
+                <p class="text-xs text-gray-400">قم بتحويل المبلغ المطلوب ثم ارفع إيصال التحويل لتأكيد الترقية</p>
+            </div>
+
+            <!-- معلومات التحويل -->
+            <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">الخطة المختارة:</span>
+                    <span id="payPlanTitle" class="font-bold text-blue-400">--</span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-400">المبلغ المطلوب:</span>
+                    <span id="payAmountTitle" class="font-bold text-emerald-400">--</span>
+                </div>
+                <div class="pt-2 border-t border-gray-800">
+                    <label class="block text-[11px] text-gray-500 mb-1">رقم محفظة فودافون كاش للتحويل عليها:</label>
+                    <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                        <span class="font-mono text-sm font-bold text-amber-400 tracking-wider">01029583799</span>
+                        <button onclick="navigator.clipboard.writeText('01029583799'); alert('تم نسخ الرقم!')" class="bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-3 py-1 rounded-lg transition">نسخ الرقم</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- نموذج تأكيد التحويل -->
+            <form onsubmit="submitPaymentReceipt(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">الرقم الذي قمت بالتحويل من خلاله *</label>
+                    <input type="tel" id="paySenderPhone" required placeholder="010xxxxxxx" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">رقم الواتساب للتواصل والتأكيد *</label>
+                    <input type="tel" id="payWhatsapp" required placeholder="+201029583799" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">صورة إيصال التحويل (Screenshot) *</label>
+                    <input type="file" id="payReceiptImage" accept="image/*" required class="w-full bg-gray-900 border border-gray-800 text-gray-400 text-xs rounded-xl p-2.5 outline-none">
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-emerald-600/20">تأكيد وإرسال طلب الترقية</button>
+            </form>
         </div>
     </div>
 
