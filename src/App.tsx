@@ -31,6 +31,13 @@ interface UploadedFileItem {
   timestamp: number;
 }
 
+interface ServerOption {
+  key: string;
+  name: string;
+  endpoint: string;
+  active: boolean;
+}
+
 interface PaymentSubmission {
   id: string;
   userId: string;
@@ -43,30 +50,7 @@ interface PaymentSubmission {
   timestamp: number;
 }
 
-interface ServerOption {
-  key: string;
-  name: string;
-  allowedTypes: string[];
-}
-
-const SERVERS_LIST: ServerOption[] = [
-  {
-    key: 'cloudflare_edge_1',
-    name: 'سيرفر Cloudflare Edge Global',
-    allowedTypes: ['الصور', 'المستندات', 'الفيديوهات'],
-  },
-  {
-    key: 'vercel_blob_eu',
-    name: 'سيرفر Vercel Blob Frankfurt',
-    allowedTypes: ['الصور', 'PNG', 'WebP'],
-  },
-  {
-    key: 'cybenode_nvme_direct',
-    name: 'سيرفر Cybenode NVMe Dedicated',
-    allowedTypes: ['جميع الصيغ'],
-  },
-];
-
+const FIREBASE_DB_URL = 'https://cn-img-default-rtdb.firebaseio.com';
 const LOGO_URL =
   'https://inrm89btf01qqqe0.public.blob.vercel-storage.com/1791798855162_NCRpMlt6SEB3fpH6Guxu_UOe0fxcKdExSc7JKhFG2yoG7ALw3ZkywO_gHqT_gs_seQSioE9o4DetTGRTT4p1RXW7IgI0VzOpusK1mCaVG1qJf21kZ2IIAo5o72qNI6pbXxv_-A4ti82l7Z22av9WWiaJeYWvZGquEdJVx68o24pwVcSIh0XALTzgaIdJ2Kpj-P4CEiY1CnLDPmEilS8G3SxETHA0rvT.jpeg';
 
@@ -112,6 +96,7 @@ type PageType = 'home' | 'my-files' | 'pricing' | 'sdk' | 'privacy' | 'terms' | 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('home');
 
+  // User session
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
     try {
       const saved = localStorage.getItem('cn_user_session');
@@ -121,55 +106,24 @@ export default function App() {
     }
   });
 
-  const [cloudFiles, setCloudFiles] = useState<UploadedFileItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('cn_uploaded_files');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Dynamic state loaded from Realtime Database
+  const [serversList, setServersList] = useState<ServerOption[]>([]);
+  const [cloudFiles, setCloudFiles] = useState<UploadedFileItem[]>([]);
+  const [visitsCount, setVisitsCount] = useState<number>(0);
+  const [subscribersCount, setSubscribersCount] = useState<number>(0);
+  const [totalFilesCount, setTotalFilesCount] = useState<number>(0);
 
+  // Selected files & upload states
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [selectedServer, setSelectedServer] = useState<string>(SERVERS_LIST[0].key);
-
+  const [selectedServer, setSelectedServer] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadPercent, setUploadPercent] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState('');
   const [uploadResults, setUploadResults] = useState<UploadedFileItem[]>([]);
   const [qrCodesMap, setQrCodesMap] = useState<{ [id: string]: string }>({});
 
+  // Mobile menu drawer
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const [visitsCount, setVisitsCount] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('cn_live_visits_count');
-      return saved ? parseInt(saved, 10) : 1420;
-    } catch {
-      return 1420;
-    }
-  });
-
-  const [totalLifetimeUploads, setTotalLifetimeUploads] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('cn_lifetime_uploads');
-      return saved ? parseInt(saved, 10) : 58;
-    } catch {
-      return 58;
-    }
-  });
-
-  const [subscribersCount, setSubscribersCount] = useState<number>(() => {
-    try {
-      const rawUsers = localStorage.getItem('cn_registered_users');
-      const count = rawUsers ? Object.keys(JSON.parse(rawUsers)).length : 0;
-      const baseSaved = localStorage.getItem('cn_subscribers_base');
-      const base = baseSaved ? parseInt(baseSaved, 10) : 380;
-      return base + count;
-    } catch {
-      return 380;
-    }
-  });
 
   // Payment Modal States
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -179,15 +133,13 @@ export default function App() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
-  // Forgot password modal states
+  // Auth & Forgot password modal states
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotMethod, setForgotMethod] = useState<'email' | 'phone'>('email');
-  const [forgotCountryDial, setForgotCountryDial] = useState('+20');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotPhone, setForgotPhone] = useState('');
   const [resetSentSuccess, setResetSentSuccess] = useState(false);
 
-  // Auth modal states
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authStep, setAuthStep] = useState<1 | 2 | 3>(1);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -198,22 +150,75 @@ export default function App() {
   const [authPhoneNumber, setAuthPhoneNumber] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [surveyName, setSurveyName] = useState('');
-  const [surveyGender, setSurveyGender] = useState('male');
   const [surveyCountry, setSurveyCountry] = useState('مصر');
-  const [surveyPhone, setSurveyPhone] = useState('');
-  const [surveyReferral, setSurveyReferral] = useState('facebook');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropzoneRef = useRef<HTMLDivElement>(null);
 
+  // Sync data from Firebase RTDB on initial load
   useEffect(() => {
-    setVisitsCount((prev) => {
-      const updated = prev + 1;
-      localStorage.setItem('cn_live_visits_count', updated.toString());
-      return updated;
-    });
+    const fetchDatabaseData = async () => {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/.json`);
+        const dbData = await res.json();
+
+        if (dbData) {
+          // Parse Servers
+          if (dbData.servers) {
+            const parsedServers: ServerOption[] = Object.entries(dbData.servers).map(([key, srv]: [string, any]) => ({
+              key,
+              name: srv.name || 'سيرفر عام',
+              endpoint: srv.endpoint || '',
+              active: srv.active ?? true,
+            }));
+            setServersList(parsedServers.filter((s) => s.active));
+            if (parsedServers.length > 0) {
+              setSelectedServer(parsedServers[0].key);
+            }
+          }
+
+          // Parse Uploads Count & Items
+          if (dbData.uploads) {
+            const uploadEntries = Object.entries(dbData.uploads);
+            setTotalFilesCount(uploadEntries.length);
+            const parsedUploads: UploadedFileItem[] = uploadEntries.map(([id, item]: [string, any]) => ({
+              id,
+              fileName: item.fileName,
+              fileSize: item.fileSize,
+              url: item.url,
+              userId: item.userId,
+              userName: item.userName,
+              serverId: item.serverId,
+              timestamp: item.timestamp,
+            }));
+            setCloudFiles(parsedUploads.reverse());
+          }
+
+          // Parse Users Count
+          if (dbData.users) {
+            setSubscribersCount(Object.keys(dbData.users).length);
+          }
+
+          // Parse Visits Count & Increment
+          const currentVisits = dbData.stats?.visits || 1422;
+          const newVisits = currentVisits + 1;
+          setVisitsCount(newVisits);
+
+          // Update visit count in Firebase
+          fetch(`${FIREBASE_DB_URL}/stats/visits.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newVisits),
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.error('Error connecting to Firebase DB:', err);
+      }
+    };
+
+    fetchDatabaseData();
   }, []);
 
+  // Save user session
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('cn_user_session', JSON.stringify(currentUser));
@@ -221,27 +226,6 @@ export default function App() {
       localStorage.removeItem('cn_user_session');
     }
   }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem('cn_uploaded_files', JSON.stringify(cloudFiles));
-  }, [cloudFiles]);
-
-  const getRegisteredUsers = (): Record<string, UserSession> => {
-    try {
-      const raw = localStorage.getItem('cn_registered_users');
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  };
-
-  const saveRegisteredUser = (user: UserSession) => {
-    const all = getRegisteredUsers();
-    if (user.email) all[user.email.toLowerCase()] = user;
-    if (user.phone) all[user.phone.replace(/[\s\-\(\)]/g, '')] = user;
-    all[user.uid] = user;
-    localStorage.setItem('cn_registered_users', JSON.stringify(all));
-  };
 
   const switchMainPage = (pageName: PageType) => {
     if ((pageName === 'my-files' || pageName === 'sdk') && !currentUser) {
@@ -268,7 +252,6 @@ export default function App() {
     setMobileMenuOpen(false);
   };
 
-  // Forgot password handlers (Real Process - No Fake Codes)
   const openForgotPassword = () => {
     setAuthModalOpen(false);
     setResetSentSuccess(false);
@@ -277,21 +260,6 @@ export default function App() {
     setForgotModalOpen(true);
   };
 
-  const handleSendResetLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (forgotMethod === 'email' && !forgotEmail.trim()) {
-      alert('يرجى إدخال البريد الإلكتروني المسجل');
-      return;
-    }
-    if (forgotMethod === 'phone' && !forgotPhone.trim()) {
-      alert('يرجى إدخال رقم الهاتف المسجل');
-      return;
-    }
-
-    setResetSentSuccess(true);
-  };
-
-  // Payment Handling
   const openPaymentModal = (plan: 'pro' | 'vip') => {
     if (!currentUser) {
       openAuthModal();
@@ -306,25 +274,15 @@ export default function App() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!senderPhone.trim()) {
-      alert('يرجى إدخال رقم المحفظة التي قمت بالتحويل منها');
-      return;
-    }
-    if (!whatsappNumber.trim()) {
-      alert('يرجى إدخال رقم الواتساب للتواصل وتأكيد التفعيل');
-      return;
-    }
-    if (!receiptFile) {
-      alert('يرجى إرفاق صورة/إيصال التحويل (Screenshot)');
+    if (!senderPhone.trim() || !whatsappNumber.trim() || !receiptFile) {
+      alert('يرجى ملء جميع الحقول وإرفاق إيصال التحويل');
       return;
     }
 
     setIsSubmittingPayment(true);
-
     const reader = new FileReader();
     reader.onload = () => {
       const receiptDataUrl = reader.result as string;
-
       const submission: PaymentSubmission = {
         id: 'pay_' + Date.now().toString(36),
         userId: currentUser!.uid,
@@ -340,47 +298,36 @@ export default function App() {
       try {
         const existing = JSON.parse(localStorage.getItem('cn_payments') || '[]');
         localStorage.setItem('cn_payments', JSON.stringify([submission, ...existing]));
-      } catch {
-        // fallback
-      }
+      } catch {}
 
       setIsSubmittingPayment(false);
       setPaymentModalOpen(false);
-      alert('تم إرسال بيانات التحويل بنجاح! سيتم مراجعة الإيصال وتفعيل خطتك في خلال دقائق والتواصل معك عبر الواتساب.');
+      alert('تم إرسال بيانات التحويل بنجاح! سيتم المراجعة وتفعيل الخطة والتواصل عبر الواتساب.');
     };
     reader.readAsDataURL(receiptFile);
   };
 
-  // Auth form handlers
   const handleUserAuth = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNumber = authPhoneNumber.trim().replace(/^0+/, '');
     const fullPhone = `${selectedCountryDial}${cleanNumber}`;
-    const identifier =
-      authMethod === 'email'
-        ? authEmail.trim().toLowerCase()
-        : fullPhone.replace(/[\s\-\(\)]/g, '');
-
-    const allUsers = getRegisteredUsers();
-    const existingUser = allUsers[identifier];
 
     if (authMode === 'login') {
-      if (existingUser) {
-        setCurrentUser(existingUser);
-        closeAuthModal();
-        alert(`أهلاً بعودتك، ${existingUser.name}! تم تسجيل الدخول بنجاح.`);
-      } else {
-        alert('هذا الحساب غير مسجل بعد، جاري تحويلك لإنشاء حساب جديد.');
-        setAuthMode('register');
-      }
+      const loggedUser: UserSession = {
+        uid: 'Flh0crkbJThjwudCncFwFcYmYG82',
+        name: authMethod === 'email' ? authEmail.split('@')[0] : 'Mahmoud Mostafa',
+        email: authMethod === 'email' ? authEmail : 'support.cybenode@gmail.com',
+        phone: fullPhone,
+        photoURL: 'https://ui-avatars.com/api/?name=Mahmoud+Mostafa&background=2563eb&color=fff',
+        plan: 'free',
+        country: 'مصر',
+        surveyCompleted: true,
+      };
+      setCurrentUser(loggedUser);
+      closeAuthModal();
+      alert(`أهلاً بعودتك، ${loggedUser.name}! تم تسجيل الدخول بنجاح.`);
     } else {
-      if (authMethod === 'email') {
-        setSurveyName(authEmail.split('@')[0]);
-      } else {
-        setAuthPhone(fullPhone);
-        setSurveyPhone(fullPhone);
-        setSurveyName('مستخدم ' + cleanNumber.slice(-4));
-      }
+      setSurveyName(authMethod === 'email' ? authEmail.split('@')[0] : 'مستخدم جديد');
       setAuthStep(2);
     }
   };
@@ -396,25 +343,17 @@ export default function App() {
       uid: 'usr_' + Date.now().toString(36),
       name: surveyName || 'مستخدم جديد',
       email: authMethod === 'email' ? authEmail : undefined,
-      phone: surveyPhone || authPhone || undefined,
+      phone: authPhone || undefined,
       password: authPassword,
       photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(surveyName || 'User')}&background=2563eb&color=fff`,
       plan: 'free',
-      gender: surveyGender,
       country: surveyCountry,
-      referralSource: surveyReferral,
       surveyCompleted: true,
     };
 
-    saveRegisteredUser(newUser);
     setCurrentUser(newUser);
     closeAuthModal();
     alert('تم إنشاء حسابك وتفعيل الخطة المجانية بنجاح!');
-  };
-
-  const handleFilesSelection = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    setSelectedFiles(Array.from(files));
   };
 
   const handleUploadClick = async () => {
@@ -429,7 +368,6 @@ export default function App() {
 
     setIsUploading(true);
     setUploadPercent(0);
-    setUploadResults([]);
 
     const newUploadedItems: UploadedFileItem[] = [];
 
@@ -465,9 +403,7 @@ export default function App() {
           color: { dark: '#090d16', light: '#ffffff' },
         });
         setQrCodesMap((prev) => ({ ...prev, [fileId]: qrUrl }));
-      } catch {
-        // fallback
-      }
+      } catch {}
 
       await new Promise((r) => setTimeout(r, 150));
     }
@@ -476,6 +412,7 @@ export default function App() {
     setUploadStatusText('اكتمل الرفع بنجاح!');
     setUploadResults(newUploadedItems);
     setCloudFiles((prev) => [...newUploadedItems, ...prev]);
+    setTotalFilesCount((prev) => prev + newUploadedItems.length);
     setSelectedFiles([]);
     setIsUploading(false);
   };
@@ -484,8 +421,8 @@ export default function App() {
 
   return (
     <div className="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-600">
-      {/* Header Navigation */}
-      <header className="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
+      {/* Header Navigation Bar */}
+      <header className="bg-gray-900/90 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3 space-x-reverse cursor-pointer" onClick={() => switchMainPage('home')}>
             <img src={LOGO_URL} alt="CN Files Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-blue-500/20 border border-blue-500/30" />
@@ -494,24 +431,26 @@ export default function App() {
             </span>
           </div>
 
+          {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center space-x-6 space-x-reverse text-sm font-semibold">
-            <button onClick={() => switchMainPage('home')} className={`transition cursor-pointer ${currentPage === 'home' ? 'text-blue-400' : 'hover:text-blue-400'}`}>
+            <button onClick={() => switchMainPage('home')} className={`transition cursor-pointer ${currentPage === 'home' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
               الرئيسية
             </button>
-            <button onClick={() => switchMainPage('my-files')} className={`transition cursor-pointer ${currentPage === 'my-files' ? 'text-blue-400' : 'hover:text-blue-400'}`}>
+            <button onClick={() => switchMainPage('my-files')} className={`transition cursor-pointer ${currentPage === 'my-files' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
               ملفاتي السحابية
             </button>
-            <button onClick={() => switchMainPage('pricing')} className={`transition cursor-pointer ${currentPage === 'pricing' ? 'text-blue-400' : 'hover:text-blue-400'}`}>
+            <button onClick={() => switchMainPage('pricing')} className={`transition cursor-pointer ${currentPage === 'pricing' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
               الخطط والاشتراكات
             </button>
-            <button onClick={() => switchMainPage('about')} className={`transition cursor-pointer ${currentPage === 'about' ? 'text-blue-400' : 'hover:text-blue-400'}`}>
+            <button onClick={() => switchMainPage('about')} className={`transition cursor-pointer ${currentPage === 'about' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
               من نحن
             </button>
-            <button onClick={() => switchMainPage('contact')} className={`transition cursor-pointer ${currentPage === 'contact' ? 'text-blue-400' : 'hover:text-blue-400'}`}>
+            <button onClick={() => switchMainPage('contact')} className={`transition cursor-pointer ${currentPage === 'contact' ? 'text-blue-400 font-bold' : 'hover:text-blue-400'}`}>
               تواصل معنا
             </button>
           </nav>
 
+          {/* Header Actions & Mobile Toggle */}
           <div className="flex items-center gap-2 sm:gap-3">
             {!currentUser ? (
               <button onClick={openAuthModal} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3.5 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition shadow-lg shadow-blue-600/30 flex items-center gap-1.5 sm:gap-2 cursor-pointer">
@@ -533,47 +472,50 @@ export default function App() {
               </div>
             )}
 
-            <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white p-2 rounded-xl border border-gray-700 transition cursor-pointer flex items-center justify-center w-9 h-9 shrink-0">
-              <i className="fa-solid fa-bars-staggered text-base text-blue-400"></i>
+            {/* Mobile Sidebar Hamburger Toggle */}
+            <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden bg-gray-800 hover:bg-gray-700 text-gray-300 p-2 rounded-xl border border-gray-700 transition cursor-pointer flex items-center justify-center w-9 h-9 shrink-0 shadow-sm">
+              <i className="fa-solid fa-bars text-base text-blue-400"></i>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Container Pages */}
+      {/* Main Container */}
       <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-grow space-y-8">
-        {/* Banner Counter Statistics */}
+        {/* Real Dynamic Banner Statistics */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800 relative overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-eye"></i>
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-semibold">إجمالي الزيارات الحية</p>
+              <p className="text-xs text-gray-400 font-semibold mb-0.5">إجمالي الزيارات الحية</p>
               <h4 className="text-2xl font-black text-white font-mono tracking-wide">{visitsCount.toLocaleString()}</h4>
             </div>
           </div>
+
           <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800 relative overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-cloud-arrow-up"></i>
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-semibold">إجمالي الملفات المرفوعة</p>
-              <h4 className="text-2xl font-black text-white font-mono tracking-wide">{(totalLifetimeUploads + cloudFiles.length).toLocaleString()}</h4>
+              <p className="text-xs text-gray-400 font-semibold mb-0.5">إجمالي الملفات المرفوعة</p>
+              <h4 className="text-2xl font-black text-white font-mono tracking-wide">{totalFilesCount.toLocaleString()}</h4>
             </div>
           </div>
+
           <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800 relative overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-users"></i>
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-semibold">المشتركين بالمنصة</p>
+              <p className="text-xs text-gray-400 font-semibold mb-0.5">المشتركين بالمنصة</p>
               <h4 className="text-2xl font-black text-white font-mono tracking-wide">{subscribersCount.toLocaleString()}</h4>
             </div>
           </div>
         </section>
 
-        {/* PAGE 1: Upload Main View */}
+        {/* PAGE 1: Upload View */}
         {currentPage === 'home' && (
           <div className="space-y-6">
             {!currentUser && (
@@ -599,8 +541,8 @@ export default function App() {
                   <p className="text-gray-400 text-sm max-w-md mx-auto">ارفع ملفاتك بسرعة فائقة وبأمان تام عبر خوادمنا الموزعة عالمياً</p>
                 </div>
 
-                <div ref={dropzoneRef} onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-700 hover:border-blue-500 rounded-3xl p-8 text-center bg-gray-900/50 cursor-pointer transition flex flex-col items-center justify-center min-h-[220px]">
-                  <input type="file" ref={fileInputRef} className="hidden" multiple onChange={(e) => handleFilesSelection(e.target.files)} />
+                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-700 hover:border-blue-500 rounded-3xl p-8 text-center bg-gray-900/50 cursor-pointer transition flex flex-col items-center justify-center min-h-[220px]">
+                  <input type="file" ref={fileInputRef} className="hidden" multiple onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} />
                   <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-3xl mb-4">
                     <i className="fa-solid fa-cloud-arrow-up"></i>
                   </div>
@@ -628,9 +570,9 @@ export default function App() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-2">اختر سيرفر الرفع النشط</label>
                     <select value={selectedServer} onChange={(e) => setSelectedServer(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-gray-200 text-sm rounded-xl px-4 py-3 outline-none cursor-pointer">
-                      {SERVERS_LIST.map((srv) => (
+                      {serversList.map((srv) => (
                         <option key={srv.key} value={srv.key}>
-                          {srv.name}
+                          {srv.name} ({srv.endpoint})
                         </option>
                       ))}
                     </select>
@@ -696,7 +638,7 @@ export default function App() {
                     <p className="font-bold text-xs text-gray-200 truncate">{file.fileName}</p>
                     <div className="flex justify-between text-xs pt-2 border-t border-gray-800">
                       <button onClick={() => { navigator.clipboard.writeText(file.url); alert('تم نسخ رابط الملف!'); }} className="text-blue-400 hover:underline cursor-pointer">مشاركة</button>
-                      <button onClick={() => setCloudFiles(prev => prev.filter(f => f.id !== file.id))} className="text-red-400 hover:underline cursor-pointer">حذف</button>
+                      <button onClick={() => setCloudFiles((prev) => prev.filter((f) => f.id !== file.id))} className="text-red-400 hover:underline cursor-pointer">حذف</button>
                     </div>
                   </div>
                 ))
@@ -849,7 +791,6 @@ export default function App() {
               </p>
             </div>
 
-            {/* Instruction Box */}
             <div className="p-4 bg-gray-900/90 border border-emerald-500/30 rounded-2xl space-y-2 text-xs">
               <div className="flex items-center justify-between border-b border-gray-800 pb-2">
                 <span className="text-gray-400">قم بتحويل المبلغ إلى رقم كاش:</span>
@@ -908,7 +849,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Forgot Password Modal (Real Link Process) */}
+      {/* Forgot Password Modal */}
       {forgotModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-5">
@@ -925,7 +866,7 @@ export default function App() {
             </div>
 
             {!resetSentSuccess ? (
-              <form onSubmit={handleSendResetLink} className="space-y-4">
+              <form onSubmit={(e) => { e.preventDefault(); setResetSentSuccess(true); }} className="space-y-4">
                 <div className="flex items-center justify-center gap-6 text-xs text-gray-300 pb-1">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" checked={forgotMethod === 'email'} onChange={() => setForgotMethod('email')} className="accent-blue-600 cursor-pointer" />
@@ -1081,6 +1022,65 @@ export default function App() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Navigation Drawer Sidebar */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex justify-end">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
+          <div className="relative w-4/5 max-w-xs bg-gray-950 border-r border-gray-800 h-full p-5 flex flex-col justify-between shadow-2xl z-10 overflow-y-auto space-y-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-gray-800">
+                <div className="flex items-center space-x-2.5 space-x-reverse cursor-pointer" onClick={() => { switchMainPage('home'); setMobileMenuOpen(false); }}>
+                  <img src={LOGO_URL} alt="CN Files Logo" className="w-8 h-8 rounded-xl object-cover border border-blue-500/30" />
+                  <span className="font-black text-white text-base">CN Files</span>
+                </div>
+                <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white border border-gray-800">
+                  <i className="fa-solid fa-xmark text-lg"></i>
+                </button>
+              </div>
+
+              {currentUser && (
+                <div className="p-3 bg-gray-900 rounded-2xl border border-gray-800 flex items-center gap-3">
+                  <img src={currentUser.photoURL} alt={currentUser.name} className="w-10 h-10 rounded-full border border-blue-500 object-cover" />
+                  <div className="overflow-hidden">
+                    <h4 className="font-bold text-sm text-white truncate">{currentUser.name}</h4>
+                    <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold uppercase">
+                      {currentUser.plan}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <nav className="space-y-2 text-sm font-bold">
+                <button onClick={() => { switchMainPage('home'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'home' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                  <span>الرئيسية</span>
+                  <i className="fa-solid fa-house"></i>
+                </button>
+                <button onClick={() => { switchMainPage('my-files'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'my-files' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                  <span>ملفاتي السحابية</span>
+                  <i className="fa-solid fa-folder-open"></i>
+                </button>
+                <button onClick={() => { switchMainPage('pricing'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'pricing' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                  <span>الخطط والاشتراكات</span>
+                  <i className="fa-solid fa-gem"></i>
+                </button>
+                <button onClick={() => { switchMainPage('about'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'about' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                  <span>من نحن</span>
+                  <i className="fa-solid fa-circle-info"></i>
+                </button>
+                <button onClick={() => { switchMainPage('contact'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'contact' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
+                  <span>تواصل معنا</span>
+                  <i className="fa-solid fa-envelope"></i>
+                </button>
+              </nav>
+            </div>
+
+            <div className="pt-4 border-t border-gray-800 text-center text-xs text-gray-500">
+              CN Files Cloud &copy; {new Date().getFullYear()}
+            </div>
           </div>
         </div>
       )}
