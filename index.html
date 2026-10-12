@@ -1,17 +1,389 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CN Files - منصة رفع وإدارة الملفات السحابية</title>
-    <meta name="description" content="منصة CN Files السحابية لرفع وإدارة ومشاركة الملفات والصور بسرعة فائقة." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  </head>
-  <body class="bg-[#090d16] text-slate-100 antialiased selection:bg-blue-600 selection:text-white">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة CN-Img السحابية | رفع وإدارة الملفات المتقدمة</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-600">
+
+    <!-- Header Navigation -->
+    <header class="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse cursor-pointer" onclick="switchMainPage('home')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <span class="text-xl font-extrabold tracking-wide text-white">CN-Img <span class="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full mr-2">v3.0</span></span>
+            </div>
+
+            <!-- Header Nav Links -->
+            <nav class="hidden md:flex items-center space-x-6 space-x-reverse text-sm font-semibold">
+                <button onclick="switchMainPage('home')" class="hover:text-blue-400 transition">الرئيسية</button>
+                <button onclick="switchMainPage('my-files')" class="hover:text-blue-400 transition">ملفاتي السحابية</button>
+                <button onclick="switchMainPage('pricing')" class="hover:text-blue-400 transition">الخطط والاشتراكات</button>
+                <button id="navSdkBtn" onclick="switchMainPage('sdk')" class="hidden text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5"><i class="fa-solid fa-server text-xs"></i> SDK السيرفر الخاص</button>
+            </nav>
+
+            <!-- Auth Buttons Container -->
+            <div id="authContainer">
+                <button id="openAuthBtn" onclick="openAuthModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-600/30 flex items-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span>تسجيل الدخول / الحساب</span>
+                </button>
+
+                <div id="userProfileMenu" class="hidden flex items-center gap-3">
+                    <span id="planBadge" class="text-[11px] bg-blue-500/20 border border-blue-500/40 text-blue-400 px-2.5 py-1 rounded-full font-bold">مجاني</span>
+                    <button onclick="switchMainPage('my-files')" class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded-xl transition">
+                        <img id="userAvatarHeader" class="w-7 h-7 rounded-full object-cover border border-blue-500" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="Avatar">
+                        <span id="userNameHeader" class="text-sm font-semibold text-gray-200">المستخدم</span>
+                    </button>
+                    <button onclick="logoutUser()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl transition border border-red-500/30" title="تسجيل الخروج">
+                        <i class="fa-solid fa-power-off text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container Pages -->
+    <main class="max-w-6xl mx-auto w-full px-4 py-8 flex-grow space-y-8">
+
+        <!-- Banner Counter Statistics -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800">
+                <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-eye"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-semibold">إجمالي الزيارات</p>
+                    <h4 id="liveVisitsCount" class="text-2xl font-black text-white">1,420</h4>
+                </div>
+            </div>
+            <div class="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-semibold">الملفات المرفوعة</p>
+                    <h4 id="liveFilesCount" class="text-2xl font-black text-white">0</h4>
+                </div>
+            </div>
+            <div class="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800">
+                <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-semibold">المشتركين بالمنصة</p>
+                    <h4 id="liveUsersCount" class="text-2xl font-black text-white">380</h4>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 1: Upload Main View -->
+        <div id="pageHome" class="main-page space-y-6">
+            <div class="glass border border-gray-800 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -left-24 w-60 h-60 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="text-center space-y-2 mb-8">
+                    <h1 class="text-3xl md:text-4xl font-black text-white tracking-wide">رفع الملفات والصور السحابية</h1>
+                    <p class="text-gray-400 text-sm max-w-md mx-auto">ارفع ملفاتك بسرعة فائقة عبر بروتوكول توجيه الـ Workers الموزع عالمياً</p>
+                </div>
+
+                <!-- Mandatory Login Notice Overlay -->
+                <div id="guestUploadBlocker" class="hidden my-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-center text-sm font-semibold flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-lock text-base"></i>
+                    <span>يجب تسجيل الدخول أولاً لاستخدام منصة الرفع السحابي.</span>
+                    <button onclick="openAuthModal()" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold px-4 py-1.5 rounded-xl text-xs transition">تسجيل الآن</button>
+                </div>
+
+                <!-- Dropzone Box -->
+                <div id="dropzone" class="border-2 border-dashed border-gray-700 hover:border-blue-500 rounded-3xl p-8 text-center bg-gray-900/50 cursor-pointer transition flex flex-col items-center justify-center min-h-[240px] group">
+                    <input type="file" id="fileInput" class="hidden" multiple>
+                    <div class="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition duration-300">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <p class="text-gray-200 font-bold text-base mb-1">اسحب وأسقط الملفات هنا، أو <span class="text-blue-400 underline">اضغط لاختيار ملفاتك</span></p>
+                    <p class="text-gray-400 text-xs">يدعم الصور، الفيديوهات، الأكواد، والمستندات</p>
+                </div>
+
+                <!-- Selected Files Preview Cards Grid -->
+                <div id="selectedFilesPreview" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-4"></div>
+
+                <!-- Server Options & Action Button -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-2">اختر سيرفر الرفع النشط</label>
+                        <select id="serverSelect" class="w-full bg-gray-900 border border-gray-800 text-gray-200 text-sm rounded-xl px-4 py-3 focus:border-blue-500 outline-none">
+                            <option value="">جاري تحميل السيرفرات السحابية...</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="uploadBtn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold py-3 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-rocket"></i>
+                            <span>بدء الرفع السحابي الآن</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Bar Container -->
+                <div id="progressContainer" class="hidden mt-6 bg-gray-900/80 p-4 rounded-2xl border border-gray-800 space-y-2">
+                    <div class="flex justify-between text-xs font-semibold text-gray-300">
+                        <span id="uploadStatus">جاري معالجة ورفع الملفات...</span>
+                        <span id="uploadPercent" class="text-blue-400">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                        <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Results Box -->
+            <div id="resultSection" class="hidden glass border border-gray-800 rounded-3xl p-6 md:p-8 shadow-xl space-y-4">
+                <h2 class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i> تم الرفع والحفظ بالسحابة بنجاح!
+                </h2>
+                <div id="linksList" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- PAGE 2: User Cloud Files (My Files) -->
+        <div id="pageMyFiles" class="main-page hidden space-y-6">
+            <div class="glass border border-gray-800 rounded-3xl p-6 md:p-8 space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-blue-500"></i> ملفاتي المرفوعة
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">جميع الملفات المحفوظة بحسابك الشخصي على المنصة</p>
+                    </div>
+                    <span id="myFilesCountBadge" class="text-xs bg-gray-800 text-gray-300 border border-gray-700 px-3 py-1.5 rounded-xl font-bold">0 ملف</span>
+                </div>
+
+                <!-- Files Grid View -->
+                <div id="userCloudFilesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <p class="text-gray-500 text-sm text-center col-span-full py-8">جاري جلب الملفات الخاصة بك...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 3: Plans & Pricing -->
+        <div id="pagePricing" class="main-page hidden space-y-6">
+            <div class="text-center space-y-2 mb-8">
+                <h2 class="text-3xl font-black text-white">خطط الاشتراكات والترقية</h2>
+                <p class="text-gray-400 text-sm max-w-md mx-auto">اختر الخطة المناسبة لاحتياجاتك واستمتع بمميزات وسيرفرات فائقة</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Free Plan -->
+                <div class="glass border border-gray-800 rounded-3xl p-6 flex flex-col justify-between space-y-6 hover:border-gray-700 transition">
+                    <div class="space-y-4">
+                        <span class="text-xs bg-gray-800 text-gray-300 px-3 py-1 rounded-full font-bold">الخطة المجانية</span>
+                        <h3 class="text-3xl font-black text-white">0 <span class="text-xs font-normal text-gray-400">ج.م / شهرياً</span></h3>
+                        <ul class="space-y-3 text-xs text-gray-300">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> رفع صور ومستندات محدودة</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> خوادم سحابية عامة</li>
+                            <li class="flex items-center gap-2 text-gray-500"><i class="fa-solid fa-xmark"></i> بدون سيرفر خاص</li>
+                        </ul>
+                    </div>
+                    <button onclick="selectPlan('free')" class="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl text-sm transition">الخطة الحالية</button>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="glass border border-blue-500/40 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative hover:border-blue-500 transition">
+                    <span class="absolute -top-3 right-6 text-[10px] bg-blue-600 text-white font-bold px-3 py-1 rounded-full">الأكثر شعبية</span>
+                    <div class="space-y-4">
+                        <span class="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full font-bold">الخطة الاحترافية (Pro)</span>
+                        <h3 class="text-3xl font-black text-white">150 <span class="text-xs font-normal text-gray-400">ج.م / شهرياً</span></h3>
+                        <ul class="space-y-3 text-xs text-gray-300">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> رفع جميع الصيغ بلا حدود</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> خوادم سريعة فائقة السرعة</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> دعم فني مخصص</li>
+                        </ul>
+                    </div>
+                    <button onclick="selectPlan('pro')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg shadow-blue-600/30">الترقية للـ Pro</button>
+                </div>
+
+                <!-- VIP Dedicated Server Plan -->
+                <div class="glass border border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative hover:border-amber-500 transition glow">
+                    <span class="absolute -top-3 right-6 text-[10px] bg-amber-500 text-gray-950 font-black px-3 py-1 rounded-full">السيرفر الخاص VIP</span>
+                    <div class="space-y-4">
+                        <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full font-bold">خطة السيرفر المدار</span>
+                        <h3 class="text-3xl font-black text-white">450 <span class="text-xs font-normal text-gray-400">ج.م / شهرياً</span></h3>
+                        <ul class="space-y-3 text-xs text-gray-300">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> جميع مميزات خطة Pro</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> سيرفر Cloudflare Worker خاص بك</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> الحصول على SDK لوحة تحكم مخصصة</li>
+                        </ul>
+                    </div>
+                    <button onclick="selectPlan('vip')" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-gray-950 font-black py-3 rounded-xl text-sm transition shadow-lg shadow-amber-500/20">طلب السيرفر الخاص والـ SDK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 4: VIP Dedicated Server SDK Page -->
+        <div id="pageSdk" class="main-page hidden space-y-6">
+            <div class="glass border border-amber-500/40 rounded-3xl p-6 md:p-8 space-y-6">
+                <div class="border-b border-gray-800 pb-4 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-server"></i> تقديم طلب ورخص السيرفر الخاص (SDK Server)
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">تابع حالة معالجة الطلب واستلم حزمة السيرفر الخاصة بك فور اعتمادها من الإدارة</p>
+                    </div>
+                    <span id="sdkRequestStatusBadge" class="text-xs bg-gray-800 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full font-bold">لم يتم التقديم</span>
+                </div>
+
+                <!-- SDK Request Action Box -->
+                <div id="sdkApplyBox" class="space-y-4">
+                    <p class="text-sm text-gray-300 leading-relaxed">
+                        بصفتك مشترك في الخطة المتقدمة (VIP)، يحق لك طلب سيرفر Cloudflare Worker مدار بالكامل ومربوط بـ Blob Storage خاص بك لحفظ ملفاتك بأقصى حماية وسرعة.
+                    </p>
+                    <button onclick="submitSdkRequest()" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black px-6 py-3 rounded-xl text-sm transition shadow-lg shadow-amber-500/20">
+                        التقديم للحصول على السيرفر الخاص الآن
+                    </button>
+                </div>
+
+                <!-- Admin Uploaded SDK & Notes Box -->
+                <div id="sdkApprovedContent" class="hidden space-y-4 pt-4 border-t border-gray-800">
+                    <h3 class="text-md font-bold text-white">حزمة SDK وحساب السيرفر الخاص بك:</h3>
+                    
+                    <div class="space-y-2">
+                        <label class="block text-xs text-gray-400">ملاحظات وتعليمات الإدارة:</label>
+                        <div id="adminSdkNote" class="bg-gray-900 border border-gray-800 p-4 rounded-xl text-xs text-gray-300 leading-relaxed">لا توجد ملاحظات من الإدارة بعد.</div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-xs text-gray-400">كود حزمة الـ SDK المخصصة:</label>
+                            <button onclick="copySdkCode()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-lg transition">نسخ الكود</button>
+                        </div>
+                        <textarea id="sdkCodeBox" readonly rows="8" class="w-full bg-gray-950 border border-gray-800 text-blue-400 font-mono text-xs p-4 rounded-xl outline-none leading-relaxed"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 py-4 text-center text-xs text-gray-500">
+        جميع الحقوق محفوظة &copy; 2026 - منصة CN-Img Distributed Infrastructure
+    </footer>
+
+    <!-- Auth Modal & Mandatory Profile Survey Stepper -->
+    <div id="authModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-6">
+            <button onclick="closeAuthModal()" class="absolute top-4 left-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <!-- STEP 1: Login / Registration Form -->
+            <div id="authStep1" class="space-y-4">
+                <h2 class="text-xl font-bold text-center text-white">تسجيل الدخول / إنشاء حساب</h2>
+
+                <button id="googleAuthBtn" class="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-3 transition shadow">
+                    <i class="fa-brands fa-google text-red-500 text-lg"></i>
+                    <span>متابعة باستخدام Google</span>
+                </button>
+
+                <div class="flex items-center my-4">
+                    <div class="flex-grow border-t border-gray-800"></div>
+                    <span class="px-3 text-xs text-gray-500 font-semibold">أو عبر البريد/الهاتف</span>
+                    <div class="flex-grow border-t border-gray-800"></div>
+                </div>
+
+                <form id="emailAuthForm" onsubmit="handleUserAuth(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">البريد الإلكتروني</label>
+                        <input type="email" id="authEmail" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="example@domain.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">كلمة المرور</label>
+                        <input type="password" id="authPassword" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-600/30">دخول / تسجيل</button>
+                </form>
+            </div>
+
+            <!-- STEP 2: Mandatory Primary Data Survey -->
+            <div id="authStep2" class="hidden space-y-4">
+                <div class="text-center">
+                    <span class="text-xs text-blue-400 font-bold">الخطوة 1 من 2</span>
+                    <h2 class="text-lg font-bold text-white mt-1">استكمال البيانات الأساسية</h2>
+                    <p class="text-xs text-gray-400">يرجى إدخال بياناتك لاستكمال إنشاء الحساب</p>
+                </div>
+
+                <form id="profileSurveyForm" onsubmit="submitProfileSurvey(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">الاسم بالكامل *</label>
+                        <input type="text" id="surveyName" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">النوع *</label>
+                            <select id="surveyGender" required class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                                <option value="male">ذكر</option>
+                                <option value="female">أنثى</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">البلد *</label>
+                            <input type="text" id="surveyCountry" required placeholder="مصر" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">رقم الهاتف (اختياري)</label>
+                        <input type="tel" id="surveyPhone" placeholder="+201000000000" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition">المتابعة لاختيار الخطة</button>
+                </form>
+            </div>
+
+            <!-- STEP 3: Mandatory Plan Selection -->
+            <div id="authStep3" class="hidden space-y-4">
+                <div class="text-center">
+                    <span class="text-xs text-amber-400 font-bold">الخطوة 2 من 2</span>
+                    <h2 class="text-lg font-bold text-white mt-1">اختر خطة الاشتراك الخاصة بك</h2>
+                </div>
+
+                <div class="space-y-3">
+                    <div onclick="selectInitialPlan('free')" class="p-3 bg-gray-900 border border-gray-800 rounded-xl cursor-pointer hover:border-blue-500 transition flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-sm text-white">الخطة المجانية</h4>
+                            <p class="text-[11px] text-gray-400">رفع محدود على خوادم عامة</p>
+                        </div>
+                        <span class="text-xs font-bold text-emerald-400">مجاناً</span>
+                    </div>
+
+                    <div onclick="selectInitialPlan('pro')" class="p-3 bg-gray-900 border border-blue-500/40 rounded-xl cursor-pointer hover:border-blue-500 transition flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-sm text-blue-400">الخطة الاحترافية (Pro)</h4>
+                            <p class="text-[11px] text-gray-400">رفع غير محدود وسيرفرات فائقة</p>
+                        </div>
+                        <span class="text-xs font-bold text-white">150 ج.م</span>
+                    </div>
+
+                    <div onclick="selectInitialPlan('vip')" class="p-3 bg-gray-900 border border-amber-500/40 rounded-xl cursor-pointer hover:border-amber-500 transition flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-sm text-amber-400">سيرفر خاص VIP + SDK</h4>
+                            <p class="text-[11px] text-gray-400">سيرفر مدار خاص ورخصة SDK</p>
+                        </div>
+                        <span class="text-xs font-bold text-white">450 ج.م</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Main JavaScript Logic -->
+    <script type="module" src="app.js"></script>
+</body>
 </html>
