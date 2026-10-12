@@ -157,9 +157,8 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync URLs for Google AdSense SEO Link Routing
   const navigateToPage = (pageName: PageType) => {
-    if ((pageName === 'my-files') && !currentUser) {
+    if (pageName === 'my-files' && !currentUser) {
       openAuthModal();
       return;
     }
@@ -282,6 +281,22 @@ export default function App() {
     setForgotEmail(authEmail);
     setForgotPhone(authPhoneNumber);
     setForgotModalOpen(true);
+  };
+
+  // Google Sign-In Simulation
+  const handleGoogleSignIn = () => {
+    const googleUser: UserSession = {
+      uid: 'Flh0crkbJThjwudCncFwFcYmYG82',
+      name: 'Mahmoud Mostafa',
+      email: 'support.cybenode@gmail.com',
+      photoURL: 'https://lh3.googleusercontent.com/a/ACg8ocJIrK54HMpXNnUzs0YtdPqvD31DlS9gHkAzrcEONlLLeuJiZeCA=s96-c',
+      plan: 'free',
+      country: 'مصر',
+      surveyCompleted: true,
+    };
+    setCurrentUser(googleUser);
+    closeAuthModal();
+    alert('تم تسجيل الدخول بنجاح باستخدام حساب Google!');
   };
 
   const openPaymentModal = (plan: 'pro' | 'vip') => {
@@ -445,7 +460,7 @@ export default function App() {
 
   return (
     <div className="bg-[#070a12] text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-600">
-      {/* Header Navigation Bar */}
+      {/* Header Bar */}
       <header className="bg-gray-900/90 backdrop-blur-md border-b border-gray-800/80 sticky top-0 z-40 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); }} className="flex items-center space-x-3 space-x-reverse cursor-pointer">
@@ -455,7 +470,6 @@ export default function App() {
             </span>
           </a>
 
-          {/* AdSense Valid Anchors Nav Links */}
           <nav className="hidden md:flex items-center space-x-6 space-x-reverse text-sm font-semibold">
             <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); }} className={`transition ${currentPage === 'home' ? 'text-blue-400 font-bold' : 'text-gray-300 hover:text-blue-400'}`}>
               الرئيسية
@@ -474,7 +488,6 @@ export default function App() {
             </a>
           </nav>
 
-          {/* User Status / Auth CTA */}
           <div className="flex items-center gap-2 sm:gap-3">
             {!currentUser ? (
               <button onClick={openAuthModal} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3.5 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition shadow-lg shadow-blue-600/30 flex items-center gap-1.5 sm:gap-2 cursor-pointer">
@@ -496,7 +509,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Mobile Sidebar Hamburger Toggle */}
             <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden bg-gray-800/80 hover:bg-gray-700 text-gray-300 p-2 rounded-xl border border-gray-700 transition cursor-pointer flex items-center justify-center w-9 h-9 shrink-0 shadow-sm">
               <i className="fa-solid fa-bars text-base text-blue-400"></i>
             </button>
@@ -504,9 +516,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* Main Content */}
       <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-grow space-y-8">
-        {/* Dynamic Statistics Cards */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="glass p-4 rounded-2xl flex items-center gap-4 border border-gray-800/80 relative overflow-hidden shadow-lg">
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl shrink-0">
@@ -539,7 +550,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* PAGE 1: Upload View */}
+        {/* Home Page */}
         {currentPage === 'home' && (
           <div className="space-y-6">
             {!currentUser && (
@@ -647,7 +658,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 2: User Cloud Files */}
+        {/* My Files Page */}
         {currentPage === 'my-files' && (
           <div className="glass border border-gray-800/80 rounded-3xl p-6 space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-4">
@@ -671,7 +682,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 3: Plans & Pricing */}
+        {/* Pricing Page */}
         {currentPage === 'pricing' && (
           <div className="space-y-6">
             <div className="text-center space-y-2 mb-8">
@@ -727,168 +738,116 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 4: Privacy Policy (Google AdSense Compliant URL: /privacy-policy) */}
+        {/* Legal Pages */}
         {currentPage === 'privacy' && (
           <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed shadow-xl">
             <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
               <i className="fa-solid fa-user-shield text-blue-500"></i> سياسة الخصوصية والأمان (Privacy Policy)
             </h2>
-            <p>
-              نحن في <strong>CN Files</strong> نلتزم بأعلى معايير حماية البيانات والخصوصية الرقمية لجميع زوارنا ومستخدمينا. تصف هذه السياسة كيفية جمع واستخدام وتأمين بياناتك.
-            </p>
-            <div className="space-y-4 pt-2">
-              <h3 className="text-white font-bold text-base">1. جمع البيانات والمعلومات:</h3>
-              <p>نجمع البيانات التي تزودنا بها مباشرة عند إنشاء الحساب مثل البريد الإلكتروني ورقم الهاتف لضمان جودة الخدمة والتواصل.</p>
-              
-              <h3 className="text-white font-bold text-base">2. ملفات تعريف الارتباط (Cookies):</h3>
-              <p>قد نستخدم ملفات الكوكيز لتحسين تجربة التصفح وحفظ إعدادات الجلسة وتسهيل استخدام المنصة.</p>
-
-              <h3 className="text-white font-bold text-base">3. إعلانات Google AdSense والشركاء:</h3>
-              <p>قد يتم استخدام ملفات كوكيز لشركاء الإعلانات (مثل Google) لتزويدك بإعلانات ملاءمة بناءً على زياراتك السابقة لموقعنا أو مواقع أخرى.</p>
-            </div>
+            <p>نحن في <strong>CN Files</strong> نلتزم بأعلى معايير حماية البيانات والخصوصية الرقمية لجميع زوارنا ومستخدمينا.</p>
           </div>
         )}
 
-        {/* PAGE 5: Terms of Service (Google AdSense Compliant URL: /terms-of-service) */}
         {currentPage === 'terms' && (
           <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed shadow-xl">
             <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
               <i className="fa-solid fa-file-contract text-blue-500"></i> شروط الاستخدام (Terms of Service)
             </h2>
-            <p>باستخدامك لمنصة CN Files، فإنك توافق التامة على الشروط والضوابط الموضحة أدناه:</p>
-            <ul className="list-disc list-inside space-y-3 pt-2">
-              <li>يُمنع منعاً باتاً رفع أو مشاركة أي محتوى يرتكب مخالفات قانونية أو ينتهك حقوق الملكية الفكرية.</li>
-              <li>المستخدم مسؤول مسؤولية كاملة عن سلامة وصحة الملفات والمحتوى الذي يقوم بنشره عبر حسابه.</li>
-              <li>نحتفظ بحق تعليق الحسابات التي تتجاوز الاستخدام العادل أو تسبب ضرراً لأداء سيرفرات المنصة.</li>
-            </ul>
+            <p>باستخدامك لمنصة CN Files، فإنك توافق التامة على الشروط والضوابط الموضحة.</p>
           </div>
         )}
 
-        {/* PAGE 6: About Us (Google AdSense Compliant URL: /about-us) */}
         {currentPage === 'about' && (
           <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 text-sm text-gray-300 leading-relaxed shadow-xl">
             <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
               <i className="fa-solid fa-circle-info text-blue-500"></i> من نحن (About Us)
             </h2>
-            <p>
-              <strong>CN Files</strong> هي منصة سحابية متطورة تابعة لشبكة <strong>CybeNode</strong>، تم تطويرها لتوفير حلول سريعة وآمنة لرفع، حفظ، ومشاركة الصور والملفات عبر الإنترنت.
-            </p>
-            <p>
-              هدفنا الأساسي هو تقديم تجربة استخدام فائقة بأسعار مناسبة، مع الاعتماد على خوادم ومراكز بيانات عالمية توفر أقصى معدل استقرار وسرعة نقل بيانات.
-            </p>
+            <p><strong>CN Files</strong> هي منصة سحابية متطورة تابعة لشبكة CybeNode لتوفير حلول سريعة وآمنة للرفع والتخزين.</p>
           </div>
         )}
 
-        {/* PAGE 7: Contact Us (Google AdSense Compliant URL: /contact-us) */}
         {currentPage === 'contact' && (
           <div className="glass border border-gray-800/80 rounded-3xl p-6 md:p-10 space-y-6 shadow-xl">
             <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 flex items-center gap-2">
               <i className="fa-solid fa-envelope text-blue-500"></i> تواصل معنا (Contact Us)
             </h2>
-            <p className="text-sm text-gray-300">فريق الدعم الفني متواجد لمساعدتك والإجابة على كافة الاستفسارات طوال الأسبوع.</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <div className="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl shrink-0">
-                  <i className="fa-solid fa-envelope"></i>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 block">البريد الإلكتروني الرسمي</span>
-                  <a href={`mailto:${OFFICIAL_EMAIL}`} className="text-white font-bold text-sm hover:text-blue-400">{OFFICIAL_EMAIL}</a>
-                </div>
-              </div>
-
-              <div className="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl shrink-0">
-                  <i className="fa-brands fa-whatsapp"></i>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 block">واتساب والدفع المباشر</span>
-                  <span className="text-white font-bold text-sm font-mono" dir="ltr">{PAYMENT_NUMBER}</span>
-                </div>
-              </div>
-            </div>
+            <p className="text-sm text-gray-300">فريق الدعم الفني متواجد لمساعدتك والإجابة على كافة الاستفسارات.</p>
           </div>
         )}
       </main>
 
-      {/* Payment Gateway Modal */}
-      {paymentModalOpen && (
+      {/* Auth Modal with Google Sign-In Added */}
+      {authModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl relative space-y-6">
-            <button onClick={() => setPaymentModalOpen(false)} className="absolute top-4 left-4 text-gray-400 hover:text-white cursor-pointer">
+          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-5">
+            <button onClick={closeAuthModal} className="absolute top-4 left-4 text-gray-400 hover:text-white cursor-pointer">
               <i className="fa-solid fa-xmark text-xl"></i>
             </button>
 
-            <div className="text-center space-y-2">
-              <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">بوابة الدفع الآمنة</span>
-              <h2 className="text-xl font-bold text-white">
-                تأكيد الاشتراك - خطة {selectedPlanForPayment === 'pro' ? 'الاحترافية (Pro)' : 'السيرفر الخاص (VIP)'}
-              </h2>
-              <p className="text-xs text-gray-400">
-                المبلغ المطلوب: <span className="text-emerald-400 font-bold font-mono text-sm">{selectedPlanForPayment === 'pro' ? '150' : '450'} ج.م</span>
-              </p>
-            </div>
+            {authStep === 1 && (
+              <div className="space-y-4">
+                <div className="flex bg-gray-900 p-1 rounded-2xl border border-gray-800">
+                  <button type="button" onClick={() => setAuthMode('login')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'login' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
+                    تسجيل الدخول
+                  </button>
+                  <button type="button" onClick={() => setAuthMode('register')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'register' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
+                    إنشاء حساب جديد
+                  </button>
+                </div>
 
-            <div className="p-4 bg-gray-900/90 border border-emerald-500/30 rounded-2xl space-y-2 text-xs">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-2">
-                <span className="text-gray-400">قم بتحويل المبلغ إلى رقم كاش:</span>
-                <span className="text-emerald-400 font-bold font-mono text-base" dir="ltr">{PAYMENT_NUMBER}</span>
+                {/* Google Sign In Button */}
+                <button onClick={handleGoogleSignIn} type="button" className="w-full bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>المتابعة باستخدام Google</span>
+                </button>
+
+                <div className="flex items-center gap-2 text-xs text-gray-500 my-2">
+                  <div className="flex-grow border-t border-gray-800"></div>
+                  <span>أو باستخدام البريد / الهاتف</span>
+                  <div className="flex-grow border-t border-gray-800"></div>
+                </div>
+
+                <form onSubmit={handleUserAuth} className="space-y-3">
+                  {authMethod === 'email' ? (
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">البريد الإلكتروني</label>
+                      <input type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="example@domain.com" />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">رقم الهاتف المحمول</label>
+                      <input type="tel" required dir="ltr" value={authPhoneNumber} onChange={(e) => setAuthPhoneNumber(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-blue-500 outline-none text-right font-mono" placeholder="01000000000" />
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs text-gray-400">كلمة المرور</label>
+                      {authMode === 'login' && (
+                        <button type="button" onClick={openForgotPassword} className="text-xs text-blue-400 hover:underline cursor-pointer">
+                          نسيت كلمة المرور؟
+                        </button>
+                      )}
+                    </div>
+                    <input type="password" required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="••••••••" />
+                  </div>
+
+                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-600/30 cursor-pointer">
+                    {authMode === 'login' ? 'تسجيل الدخول' : 'المتابعة لإنشاء الحساب'}
+                  </button>
+                </form>
               </div>
-              <p className="text-gray-400">يدعم التحويل من كافة المحافظ الإلكترونية (فودافون كاش، أورنج، اتصالات، وي، فوري، المحافظ البنكية).</p>
-            </div>
-
-            <form onSubmit={handlePaymentSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-gray-400 mb-1">رقم المحفظة التي قمت بالتحويل منها *</label>
-                <input
-                  type="tel"
-                  required
-                  dir="ltr"
-                  value={senderPhone}
-                  onChange={(e) => setSenderPhone(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 text-right font-mono"
-                  placeholder="01000000000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-400 mb-1">رقم الواتساب للتواصل وتأكيد التفعيل *</label>
-                <input
-                  type="tel"
-                  required
-                  dir="ltr"
-                  value={whatsappNumber}
-                  onChange={(e) => setWhatsappNumber(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 text-right font-mono"
-                  placeholder="01000000000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-400 mb-1">صورة إيصال / لقطة شاشة التحويل (Screenshot) *</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  required
-                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
-                  className="w-full bg-gray-900 border border-gray-800 text-gray-300 rounded-xl p-2 outline-none cursor-pointer"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmittingPayment}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
-              >
-                {isSubmittingPayment ? 'جاري إرسال الإيصال...' : 'تأكيد وإرسال التحويل'}
-              </button>
-            </form>
+            )}
           </div>
         </div>
       )}
 
-      {/* Forgot Password Modal */}
+      {/* Fixed Forgot Password Modal */}
       {forgotModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-5">
@@ -948,183 +907,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Auth Modal */}
-      {authModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="glass border border-gray-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative space-y-6">
-            <button onClick={closeAuthModal} className="absolute top-4 left-4 text-gray-400 hover:text-white cursor-pointer">
-              <i className="fa-solid fa-xmark text-xl"></i>
-            </button>
-
-            {authStep === 1 && (
-              <div className="space-y-4">
-                <div className="flex bg-gray-900 p-1 rounded-2xl border border-gray-800">
-                  <button type="button" onClick={() => setAuthMode('login')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'login' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
-                    تسجيل الدخول
-                  </button>
-                  <button type="button" onClick={() => setAuthMode('register')} className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${authMode === 'register' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>
-                    إنشاء حساب جديد
-                  </button>
-                </div>
-
-                <h2 className="text-xl font-bold text-center text-white">{authMode === 'login' ? 'تسجيل الدخول إلى حسابك' : 'إنشاء حساب جديد بالمنصة'}</h2>
-
-                <div className="flex items-center justify-center gap-6 text-xs text-gray-300">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={authMethod === 'email'} onChange={() => setAuthMethod('email')} className="accent-blue-600 cursor-pointer" />
-                    <span>البريد الإلكتروني</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={authMethod === 'phone'} onChange={() => setAuthMethod('phone')} className="accent-blue-600 cursor-pointer" />
-                    <span>رقم الهاتف</span>
-                  </label>
-                </div>
-
-                <form onSubmit={handleUserAuth} className="space-y-3">
-                  {authMethod === 'email' ? (
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">البريد الإلكتروني</label>
-                      <input type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="example@domain.com" />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">رقم الهاتف المحمول</label>
-                      <input type="tel" required dir="ltr" value={authPhoneNumber} onChange={(e) => setAuthPhoneNumber(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-blue-500 outline-none text-right font-mono" placeholder="01000000000" />
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs text-gray-400">كلمة المرور</label>
-                      {authMode === 'login' && (
-                        <button type="button" onClick={openForgotPassword} className="text-xs text-blue-400 hover:underline cursor-pointer">
-                          نسيت كلمة المرور؟
-                        </button>
-                      )}
-                    </div>
-                    <input type="password" required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2.5 text-sm focus:border-blue-500 outline-none" placeholder="••••••••" />
-                  </div>
-
-                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-blue-600/30 cursor-pointer">
-                    {authMode === 'login' ? 'تسجيل الدخول' : 'المتابعة لإنشاء الحساب'}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {authStep === 2 && (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <h2 className="text-lg font-bold text-white">استكمال البيانات الأساسية</h2>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); setAuthStep(3); }} className="space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">الاسم بالكامل *</label>
-                    <input type="text" required value={surveyName} onChange={(e) => setSurveyName(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">البلد *</label>
-                    <select value={surveyCountry} onChange={(e) => setSurveyCountry(e.target.value)} className="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500 cursor-pointer">
-                      {COUNTRIES_LIST.map((c) => (
-                        <option key={c.code} value={c.name}>
-                          {c.flag} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-bold transition cursor-pointer">
-                    المتابعة لاختيار الخطة
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {authStep === 3 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold text-center text-white">اختر الخطة للبدء</h2>
-                <div className="space-y-3">
-                  <div onClick={() => selectInitialPlan('free')} className="p-3 bg-gray-900 border border-gray-800 rounded-xl cursor-pointer hover:border-blue-500 transition flex justify-between items-center">
-                    <div>
-                      <h4 className="font-bold text-sm text-white">الخطة المجانية</h4>
-                      <p className="text-[11px] text-gray-400">رفع أساسي على خوادم عامة</p>
-                    </div>
-                    <span className="text-xs font-bold text-emerald-400">مجاناً</span>
-                  </div>
-
-                  <div onClick={() => selectInitialPlan('pro')} className="p-3 bg-gray-900 border border-blue-500/40 rounded-xl cursor-pointer hover:border-blue-500 transition flex justify-between items-center">
-                    <div>
-                      <h4 className="font-bold text-sm text-blue-400">الخطة الاحترافية (Pro)</h4>
-                      <p className="text-[11px] text-gray-400">رفع بلا حدود وسيرفرات فائقة</p>
-                    </div>
-                    <span className="text-xs font-bold text-white">150 ج.م</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Navigation Drawer Sidebar */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex justify-end">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
-          <div className="relative w-4/5 max-w-xs bg-gray-950 border-r border-gray-800 h-full p-5 flex flex-col justify-between shadow-2xl z-10 overflow-y-auto space-y-6">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-gray-800">
-                <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); setMobileMenuOpen(false); }} className="flex items-center space-x-2.5 space-x-reverse cursor-pointer">
-                  <img src={LOGO_URL} alt="CN Files Logo" className="w-8 h-8 rounded-xl object-cover border border-blue-500/30" />
-                  <span className="font-black text-white text-base">CN Files</span>
-                </a>
-                <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white border border-gray-800">
-                  <i className="fa-solid fa-xmark text-lg"></i>
-                </button>
-              </div>
-
-              {currentUser && (
-                <div className="p-3 bg-gray-900 rounded-2xl border border-gray-800 flex items-center gap-3">
-                  <img src={currentUser.photoURL} alt={currentUser.name} className="w-10 h-10 rounded-full border border-blue-500 object-cover" />
-                  <div className="overflow-hidden">
-                    <h4 className="font-bold text-sm text-white truncate">{currentUser.name}</h4>
-                    <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold uppercase">
-                      {currentUser.plan}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <nav className="space-y-2 text-sm font-bold">
-                <a href="/" onClick={(e) => { e.preventDefault(); navigateToPage('home'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'home' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
-                  <span>الرئيسية</span>
-                  <i className="fa-solid fa-house"></i>
-                </a>
-                <a href="/my-files" onClick={(e) => { e.preventDefault(); navigateToPage('my-files'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'my-files' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
-                  <span>ملفاتي السحابية</span>
-                  <i className="fa-solid fa-folder-open"></i>
-                </a>
-                <a href="/pricing" onClick={(e) => { e.preventDefault(); navigateToPage('pricing'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'pricing' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
-                  <span>الخطط والاشتراكات</span>
-                  <i className="fa-solid fa-gem"></i>
-                </a>
-                <a href="/about-us" onClick={(e) => { e.preventDefault(); navigateToPage('about'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'about' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
-                  <span>من نحن</span>
-                  <i className="fa-solid fa-circle-info"></i>
-                </a>
-                <a href="/contact-us" onClick={(e) => { e.preventDefault(); navigateToPage('contact'); setMobileMenuOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition ${currentPage === 'contact' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-300 hover:bg-gray-900'}`}>
-                  <span>تواصل معنا</span>
-                  <i className="fa-solid fa-envelope"></i>
-                </a>
-              </nav>
-            </div>
-
-            <div className="pt-4 border-t border-gray-800 text-center text-xs text-gray-500">
-              CN Files Cloud &copy; {new Date().getFullYear()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Footer with Google AdSense Compliant Footer Links */}
+      {/* Footer */}
       <footer className="bg-gray-900/90 border-t border-gray-800/80 py-6 text-xs text-gray-400 mt-auto shadow-inner">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
